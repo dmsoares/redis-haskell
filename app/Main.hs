@@ -26,11 +26,8 @@ main = do
         maybeReply socket mBytes
         closeSock socket
 
-getReply :: BS.ByteString -> BS.ByteString
-getReply _ = "+PONG\r\n"
-
 maybeReply :: Socket -> Maybe BS.ByteString -> IO ()
 maybeReply socket Nothing = putStrLn "no data received"
 maybeReply socket (Just bytes) = do
     putStrLn $ "received: " ++ (show bytes)
-    send socket $ getReply bytes
+    send socket $ "+PONG\r\n"
