@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Redis.Parser where
+module Redis.RESP.Parser where
 
-import Redis.DataTypes (DataType(..))
+import Redis.RESP.DataTypes (DataType(..))
 
 import qualified Data.ByteString as BS
 import Data.ByteString.Char8 (readInt)
@@ -15,6 +15,9 @@ import Control.Monad (when)
 import Data.Text.Encoding (decodeASCII)
 
 type Parser = Parsec Void BS.ByteString
+
+parse :: BS.ByteString -> Maybe DataType
+parse bytes = either (const Nothing) Just (runParser pRedisValue "" bytes)
 
 pCRLF :: Parser ()
 pCRLF = do
@@ -57,6 +60,13 @@ pArrayLength = do
     n <- L.decimal
     pCRLF
     pure n
+
+pPureString :: Parser DataType
+pPureString = do
+    _ <- char 43
+    str <- some alphaNumChar
+    pCRLF
+    pure $ SimpleString (BS.pack str)
 
 pRedisValue :: Parser DataType
 pRedisValue = pInteger <|> pBulkString <|> pArray

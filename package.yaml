@@ -33,6 +33,11 @@ executables:
 library:
   source-dirs: lib
   exposed-modules:
-    - Redis.Parser
-    - Redis.DataTypes
-    - Redis.Printer
+    - Redis.RESP
+    - Redis.Commands
+    - Redis.Redis
+  other-modules:
+    - Redis.RESP.DataTypes
+    - Redis.RESP.Parser
+    - Redis.RESP.Serializer
+    - Redis.Commands.Types

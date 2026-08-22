@@ -7,10 +7,14 @@ import System.IO (hPutStrLn, hSetBuffering, stdout, stderr, BufferMode(NoBufferi
 import Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
 import Control.Monad (forever, forM)
-import Redis.Parser
 import Text.Megaparsec (runParser)
-import Redis.DataTypes (DataType(..))
-import Redis.Printer
+import Data.IORef
+import qualified Data.Map as Map
+
+import qualified Redis.Redis as Redis
+import Redis.RESP (DataType(..))
+import qualified Redis.RESP as RESP
+import qualified Redis.Commands as Commands
 
 main :: IO ()
 main = do
@@ -27,18 +31,19 @@ main = do
     serve HostAny port $ \(socket, address) -> do
         putStrLn $ "successfully connected client: " ++ show address
 
+        tableRef <- newIORef Map.empty
+
         forever $ do
             mBytes <- recv socket 64
-            maybeReply socket mBytes
+            case mBytes of
+                Just bytes -> do
+                    putStrLn $ show bytes
+                    case Redis.deserializeCommand bytes of
+                        Just command -> do
+                            putStrLn $ show command
+                            reply <- Redis.computeReply tableRef $ command
+                            send socket . Redis.serializeReply $ reply
+                        Nothing -> pure ()
+                Nothing -> pure ()
 
         closeSock socket
-
-maybeReply :: Socket -> Maybe BS.ByteString -> IO ()
-maybeReply socket Nothing = putStrLn "no data received"
-maybeReply socket (Just bytes) = do
-    let result = runParser pRedisValue "" bytes
-    putStrLn $ show result
-    case result of
-        Left _ -> pure ()
-        Right (Array _ [BulkString _ "ECHO", BulkString l msg]) -> send socket . pprint $ BulkString l msg
-        Right (Array _ [BulkString _ "PING"]) -> send socket . pprint $ SimpleString "PONG"
