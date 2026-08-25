@@ -14,3 +14,4 @@ serialize (BulkString len str) = "$" <> Char8.pack (show len) <> crlf <> str <> 
 serialize (RedisInteger n) = ":" <> Char8.pack (show n) <> crlf
 serialize (Array len elems) = "*" <> Char8.pack (show len) <> crlf <> BS.concat (fmap serialize elems)
 serialize (SimpleString str) = "+" <> str <> crlf
+serialize NullBulkString = "$" <> "-1" <> crlf

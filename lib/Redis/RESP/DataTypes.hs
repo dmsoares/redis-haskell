@@ -7,6 +7,7 @@ data DataType =
     | Array Int [DataType]
     | BulkString Int BS.ByteString
     | SimpleString BS.ByteString
+    | NullBulkString
     deriving Show
 
 integer :: Int -> DataType
@@ -20,3 +21,5 @@ bulkString bs = BulkString (BS.length bs) bs
 
 simpleString :: BS.ByteString -> DataType
 simpleString = SimpleString
+
+nullBulkString = NullBulkString

@@ -11,7 +11,7 @@ import Data.Void
 import Text.Megaparsec
 import qualified Text.Megaparsec.Byte.Lexer as L
 import Text.Megaparsec.Byte (char, alphaNumChar)
-import Control.Monad (when)
+import Control.Monad (when, guard)
 import Data.Text.Encoding (decodeASCII)
 
 type Parser = Parsec Void BS.ByteString
@@ -67,6 +67,13 @@ pPureString = do
     str <- some alphaNumChar
     pCRLF
     pure $ SimpleString (BS.pack str)
+
+pNullBulkString :: Parser DataType
+pNullBulkString = do
+    len <- pBulkStringLength
+    guard $ len == -1
+    pCRLF
+    pure NullBulkString
 
 pRedisValue :: Parser DataType
 pRedisValue = pInteger <|> pBulkString <|> pArray
