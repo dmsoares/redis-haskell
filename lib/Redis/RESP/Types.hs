@@ -1,25 +1,25 @@
-module Redis.RESP.DataTypes where
+module Redis.RESP.Types where
 
 import qualified Data.ByteString as BS
 
-data DataType =
+data Resp =
     RedisInteger Int
-    | Array Int [DataType]
+    | Array Int [Resp]
     | BulkString Int BS.ByteString
     | SimpleString BS.ByteString
     | NullBulkString
     deriving Show
 
-integer :: Int -> DataType
+integer :: Int -> Resp
 integer = RedisInteger
 
-array :: [DataType] -> DataType
+array :: [Resp] -> Resp
 array dts = Array (length dts) dts
 
-bulkString :: BS.ByteString -> DataType
+bulkString :: BS.ByteString -> Resp
 bulkString bs = BulkString (BS.length bs) bs
 
-simpleString :: BS.ByteString -> DataType
+simpleString :: BS.ByteString -> Resp
 simpleString = SimpleString
 
 nullBulkString = NullBulkString

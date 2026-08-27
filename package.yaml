@@ -35,9 +35,11 @@ library:
   exposed-modules:
     - Redis.RESP
     - Redis.Commands
-    - Redis.Redis
+    - Redis.Table
+    - Redis
   other-modules:
-    - Redis.RESP.DataTypes
+    - Redis.RESP.Types
     - Redis.RESP.Parser
     - Redis.RESP.Serializer
     - Redis.Commands.Types
+    - Redis.Commands.Deserialization

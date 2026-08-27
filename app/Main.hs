@@ -10,8 +10,8 @@ import Control.Monad (forever, forM)
 import Text.Megaparsec (runParser)
 import qualified Data.Map as Map
 
-import qualified Redis.Redis as Redis
-import Redis.RESP (DataType(..))
+import qualified Redis as Redis
+import Redis.RESP (Resp(..))
 import qualified Redis.RESP as RESP
 import qualified Redis.Commands as Commands
 
@@ -37,12 +37,12 @@ main = do
             case mBytes of
                 Just bytes -> do
                     putStrLn $ show bytes
-                    case Redis.deserializeCommand bytes of
+                    case Commands.deserialize bytes of
                         Just command -> do
                             putStrLn $ show command
-                            reply <- Redis.computeReply redisTable $ command
+                            reply <- Redis.reply redisTable command
                             putStrLn $ show reply
-                            send socket . Redis.serializeReply $ reply
+                            send socket reply
                         Nothing -> pure ()
                 Nothing -> pure ()
 

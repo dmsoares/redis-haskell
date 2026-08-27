@@ -3,7 +3,7 @@
 
 module Redis.RESP.Parser where
 
-import Redis.RESP.DataTypes (DataType(..))
+import Redis.RESP.Types (Resp(..))
 
 import qualified Data.ByteString as BS
 import Data.ByteString.Char8 (readInt)
@@ -16,7 +16,7 @@ import Data.Text.Encoding (decodeASCII)
 
 type Parser = Parsec Void BS.ByteString
 
-parse :: BS.ByteString -> Maybe DataType
+parse :: BS.ByteString -> Maybe Resp
 parse bytes = either (const Nothing) Just (runParser pRedisValue "" bytes)
 
 pCRLF :: Parser ()
@@ -25,14 +25,14 @@ pCRLF = do
     _ <- char 10
     pure ()
 
-pInteger :: Parser DataType
+pInteger :: Parser Resp
 pInteger = do
     _ <- char 58
     n <- L.decimal
     pCRLF
     pure $ RedisInteger n
 
-pBulkString :: Parser DataType
+pBulkString :: Parser Resp
 pBulkString = do
     len <- pBulkStringLength
     str <- some alphaNumChar
@@ -47,7 +47,7 @@ pBulkStringLength = do
     pCRLF
     pure n
 
-pArray :: Parser DataType
+pArray :: Parser Resp
 pArray = do
     len <- pArrayLength
     elems <- some pRedisValue
@@ -61,19 +61,24 @@ pArrayLength = do
     pCRLF
     pure n
 
-pPureString :: Parser DataType
+pPureString :: Parser Resp
 pPureString = do
     _ <- char 43
     str <- some alphaNumChar
     pCRLF
     pure $ SimpleString (BS.pack str)
 
-pNullBulkString :: Parser DataType
+pNullBulkString :: Parser Resp
 pNullBulkString = do
     len <- pBulkStringLength
     guard $ len == -1
     pCRLF
     pure NullBulkString
 
-pRedisValue :: Parser DataType
-pRedisValue = pInteger <|> pBulkString <|> pArray
+pRedisValue :: Parser Resp
+pRedisValue =
+    pInteger  <|>
+    pBulkString <|>
+    pArray <|>
+    pNullBulkString <|>
+    pPureString
