@@ -2,18 +2,13 @@
 
 module Main (main) where
 
-import Network.Simple.TCP (serve, HostPreference(HostAny), closeSock, recv, send, Socket)
-import System.IO (hPutStrLn, hSetBuffering, stdout, stderr, BufferMode(NoBuffering))
-import Data.ByteString as BS
-import qualified Data.ByteString.Char8 as Char8
-import Control.Monad (forever, forM)
-import Text.Megaparsec (runParser)
-import qualified Data.Map as Map
+import Control.Monad (forever)
+import Data.ByteString (ByteString)
+import Network.Simple.TCP (HostPreference (HostAny), Socket, closeSock, recv, send, serve)
+import System.IO (BufferMode (NoBuffering), hPutStrLn, hSetBuffering, stderr, stdout)
 
+import Redis (RedisTable)
 import qualified Redis as Redis
-import Redis.RESP (Resp(..))
-import qualified Redis.RESP as RESP
-import qualified Redis.Commands as Commands
 
 main :: IO ()
 main = do
@@ -34,16 +29,16 @@ main = do
         putStrLn $ "successfully connected client: " ++ show address
         forever $ do
             mBytes <- recv socket 64
-            case mBytes of
-                Just bytes -> do
-                    putStrLn $ show bytes
-                    case Commands.deserialize bytes of
-                        Just command -> do
-                            putStrLn $ show command
-                            reply <- Redis.reply redisTable command
-                            putStrLn $ show reply
-                            send socket reply
-                        Nothing -> pure ()
-                Nothing -> pure ()
-
+            processBytes socket redisTable mBytes
         closeSock socket
+
+processBytes :: Socket -> RedisTable -> Maybe ByteString -> IO ()
+processBytes _ _ Nothing = pure ()
+processBytes socket table (Just bytes) = do
+    putStrLn $ show bytes
+    mReply <- Redis.reply table bytes
+    putStrLn $ show mReply
+
+    case mReply of
+        Just reply -> send socket reply
+        Nothing -> pure ()

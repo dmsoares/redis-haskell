@@ -2,6 +2,9 @@ name: codecrafters-redis
 version: 0.1.0.0
 license: BSD3
 
+ghc-options:
+  - -Wall
+
 dependencies:
   - base >= 4.19 && < 5
   - network-simple # establish a simple TCP network
@@ -13,6 +16,7 @@ dependencies:
   - time # may help with the expiry function
   - async # may help with concurrency
   - mtl # may help with structuring
+  - transformers
   # Parsing libs
   - megaparsec
   - parser-combinators
@@ -33,13 +37,14 @@ executables:
 library:
   source-dirs: lib
   exposed-modules:
-    - Redis.RESP
-    - Redis.Commands
-    - Redis.Table
     - Redis
   other-modules:
-    - Redis.RESP.Types
-    - Redis.RESP.Parser
-    - Redis.RESP.Serializer
-    - Redis.Commands.Types
-    - Redis.Commands.Deserialization
+    - Redis.Domain.Command
+    - Redis.Domain.Result
+    - Redis.Domain.Table
+    - Redis.Domain.Resp
+    - Redis.Infrastructure.Serialization.Result
+    - Redis.Infrastructure.Serialization.Command
+    - Redis.Infrastructure.Serialization.Resp
+    - Redis.Infrastructure.Table
+    - Redis.Application.Workflows.Reply

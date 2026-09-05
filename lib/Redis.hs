@@ -1,14 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NamedFieldPuns #-}
 
-module Redis (module Table, reply) where
+module Redis (module Resp, RedisTable, newRedisTable, reply) where
 
-import Redis.Table as Table (RedisTable, newRedisTable)
-import Redis.Commands (Command (..))
-import qualified Redis.Commands as Commands
-import Redis.RESP (Resp)
+import qualified Redis.Application.Workflows.Reply as Reply
+import Redis.Domain.Table (RedisTable)
+import Redis.Infrastructure.Table (newRedisTable)
+
+import Redis.Domain.Resp as Resp
+import Redis.Infrastructure.Serialization.Resp as Resp
+
+import Control.Monad.Trans.Maybe (MaybeT (runMaybeT))
 import Data.ByteString (ByteString)
-import qualified Redis.RESP as RESP
 
-reply :: RedisTable -> Command -> IO ByteString
-reply table cmd = RESP.serialize <$> Commands.dispatch table cmd
+reply :: RedisTable -> Resp -> IO (Maybe ByteString)
+reply table query = runMaybeT $ Reply.run table query

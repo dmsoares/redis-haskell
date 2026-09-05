@@ -1,23 +1,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Redis.RESP.Parser where
+module Redis.Infrastructure.Serialization.Resp where
 
-import Redis.RESP.Types (Resp(..))
+import Redis.Domain.Resp (Resp (..))
 
+import Control.Monad (guard, when)
 import qualified Data.ByteString as BS
-import Data.ByteString.Char8 (readInt)
+import qualified Data.ByteString.Char8 as Char8
 import Data.Void
 import Text.Megaparsec
+import Text.Megaparsec.Byte (alphaNumChar, char)
 import qualified Text.Megaparsec.Byte.Lexer as L
-import Text.Megaparsec.Byte (char, alphaNumChar)
-import Control.Monad (when, guard)
-import Data.Text.Encoding (decodeASCII)
+
+toBytes :: Resp -> BS.ByteString
+toBytes (BulkString len str) = "$" <> Char8.pack (show len) <> crlf <> str <> crlf
+toBytes (RedisInteger n) = ":" <> Char8.pack (show n) <> crlf
+toBytes (Array len elems) = "*" <> Char8.pack (show len) <> crlf <> BS.concat (fmap toBytes elems)
+toBytes (SimpleString str) = "+" <> str <> crlf
+toBytes NullBulkString = "$" <> "-1" <> crlf
+
+crlf :: BS.ByteString
+crlf = "\r\n"
 
 type Parser = Parsec Void BS.ByteString
 
-parse :: BS.ByteString -> Maybe Resp
-parse bytes = either (const Nothing) Just (runParser pRedisValue "" bytes)
+fromBytes :: BS.ByteString -> Maybe Resp
+fromBytes bytes = either (const Nothing) Just (runParser pRedisValue "" bytes)
 
 pCRLF :: Parser ()
 pCRLF = do
@@ -77,8 +86,8 @@ pNullBulkString = do
 
 pRedisValue :: Parser Resp
 pRedisValue =
-    pInteger  <|>
-    pBulkString <|>
-    pArray <|>
-    pNullBulkString <|>
-    pPureString
+    pInteger
+        <|> pBulkString
+        <|> pArray
+        <|> pNullBulkString
+        <|> pPureString
