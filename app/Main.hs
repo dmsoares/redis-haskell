@@ -1,14 +1,19 @@
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main (main) where
 
 import Control.Monad (forever)
 import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import Network.Simple.TCP (HostPreference (HostAny), Socket, closeSock, recv, send, serve)
 import System.IO (BufferMode (NoBuffering), hPutStrLn, hSetBuffering, stderr, stdout)
 
-import Redis (RedisTable)
+import Redis (RedisTable, Resp)
 import qualified Redis as Redis
+
+segmentSize :: Int
+segmentSize = 3_000
 
 main :: IO ()
 main = do
@@ -27,16 +32,26 @@ main = do
 
     serve HostAny port $ \(socket, address) -> do
         putStrLn $ "successfully connected client: " ++ show address
-        forever $ do
-            mBytes <- recv socket 64
-            processBytes socket redisTable mBytes
+        _ <- forever $ do
+            query <- fullQuery socket ""
+            putStrLn $ "msg: " <> show query
+            maybe (pure ()) (processQuery socket redisTable) query
         closeSock socket
 
-processBytes :: Socket -> RedisTable -> Maybe ByteString -> IO ()
-processBytes _ _ Nothing = pure ()
-processBytes socket table (Just bytes) = do
-    putStrLn $ show bytes
-    mReply <- Redis.reply table bytes
+fullQuery :: Socket -> ByteString -> IO (Maybe Resp)
+fullQuery sock buffer = do
+    -- https://stackoverflow.com/questions/2862071/how-large-should-my-recv-buffer-be-when-calling-recv-in-the-socket-library
+    mBytes <- recv sock segmentSize
+    case mBytes of
+        Nothing -> pure Nothing
+        Just bytes -> case Redis.fromBytes bytes of
+            Nothing -> fullQuery sock (BS.append bytes buffer)
+            query -> pure query
+
+processQuery :: Socket -> RedisTable -> Resp -> IO ()
+processQuery socket table query = do
+    putStrLn $ show query
+    mReply <- Redis.reply table query
     putStrLn $ show mReply
 
     case mReply of
