@@ -38,13 +38,14 @@ library:
   source-dirs: lib
   exposed-modules:
     - Redis
+    - Resp
   other-modules:
     - Redis.Domain.Command
     - Redis.Domain.Result
     - Redis.Domain.Table
-    - Redis.Domain.Resp
     - Redis.Infrastructure.Serialization.Result
     - Redis.Infrastructure.Serialization.Command
-    - Redis.Infrastructure.Serialization.Resp
     - Redis.Infrastructure.Table
     - Redis.Application.Workflows.Reply
+    - Resp.Data
+    - Resp.Serialization

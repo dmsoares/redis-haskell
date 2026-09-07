@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Redis.Infrastructure.Serialization.Resp where
+module Resp.Serialization where
 
-import Redis.Domain.Resp (Resp (..))
+import Resp.Data (Resp (..))
 
 import Control.Monad (guard, when)
 import qualified Data.ByteString as BS

@@ -2,8 +2,8 @@
 
 module Redis.Infrastructure.Serialization.Result where
 
-import qualified Redis.Domain.Resp as Resp
 import Redis.Domain.Result
+import qualified Resp as Resp
 
 toResp :: Result -> Resp.Resp
 toResp Pong = Resp.simpleString "PONG"

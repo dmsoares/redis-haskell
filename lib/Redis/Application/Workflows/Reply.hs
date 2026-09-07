@@ -5,16 +5,16 @@ module Redis.Application.Workflows.Reply (run) where
 
 import Redis.Domain.Command (Command (..), SetOption)
 import qualified Redis.Domain.Command as Command
-import Redis.Domain.Resp (Resp)
 import Redis.Domain.Result (Result)
 import qualified Redis.Domain.Result as Result
 import Redis.Domain.Table (Key, RedisTable, SetOptions (..), Value)
 import qualified Redis.Domain.Table as Table
 import qualified Redis.Infrastructure.Serialization.Command as Command
-import qualified Redis.Infrastructure.Serialization.Resp as Resp
 import Redis.Infrastructure.Serialization.Result ()
 import qualified Redis.Infrastructure.Serialization.Result as Result
 import qualified Redis.Infrastructure.Table as Table
+import Resp (Resp)
+import qualified Resp as Resp
 
 import Control.Monad (MonadPlus (mzero), (>=>))
 import Control.Monad.Reader (MonadIO (liftIO))

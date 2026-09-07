@@ -5,7 +5,7 @@ module Redis.Infrastructure.Serialization.Command where
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BC
 import Redis.Domain.Command
-import Redis.Domain.Resp (Resp (..))
+import Resp (Resp (..))
 
 fromResp :: Resp -> Maybe Command
 fromResp (Array _ [BulkString _ "PING"]) = Just Ping

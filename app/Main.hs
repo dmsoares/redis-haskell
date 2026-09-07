@@ -9,8 +9,10 @@ import qualified Data.ByteString as BS
 import Network.Simple.TCP (HostPreference (HostAny), Socket, closeSock, recv, send, serve)
 import System.IO (BufferMode (NoBuffering), hPutStrLn, hSetBuffering, stderr, stdout)
 
-import Redis (RedisTable, Resp)
+import Redis (RedisTable)
 import qualified Redis as Redis
+import Resp (Resp)
+import qualified Resp as Resp
 
 segmentSize :: Int
 segmentSize = 3_000
@@ -44,7 +46,7 @@ fullQuery sock buffer = do
     mBytes <- recv sock segmentSize
     case mBytes of
         Nothing -> pure Nothing
-        Just bytes -> case Redis.fromBytes bytes of
+        Just bytes -> case Resp.fromBytes bytes of
             Nothing -> fullQuery sock (BS.append bytes buffer)
             query -> pure query
 
