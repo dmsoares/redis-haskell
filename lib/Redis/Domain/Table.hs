@@ -26,4 +26,6 @@ data SetOptions = SetOptions
     deriving (Show)
 
 data SetResult = SetOK
+    deriving (Show)
 data GetResult = GetNull | GetValue ByteString
+    deriving (Show)

@@ -5,32 +5,35 @@ module Redis.Infrastructure.Table where
 
 import Redis.Domain.Table
 
-import qualified Control.Concurrent.MVar as MVar
-import qualified Data.Map as Map
+import Control.Concurrent.STM (atomically)
 import Data.Time (addUTCTime, getCurrentTime)
+import qualified StmContainers.Map as Map
 import Prelude hiding (exp)
 
 newRedisTable :: IO RedisTable
 newRedisTable = do
-    var <- MVar.newMVar Map.empty
+    table <- atomically Map.new
+
     let set = \key value opts -> do
             now <- getCurrentTime
             let record = RedisRecord{rValue = value, rInsertedAt = now, rExpiryTime = (expiryTime opts)}
-            MVar.modifyMVar_ var $ pure . Map.insert key record
-        get = \key -> do
-            table <- MVar.readMVar var
+            atomically $ Map.insert record key table
+
+    let get = \key -> do
             now <- getCurrentTime
-            pure $
-                Map.lookup key table
-                    >>= \RedisRecord{rValue, rInsertedAt, rExpiryTime} ->
-                        case rExpiryTime of
-                            Nothing -> Just rValue
-                            Just exp -> if addUTCTime exp rInsertedAt > now then Just rValue else Nothing
+            mValue <- atomically $ Map.lookup key table
+            pure $ case mValue of
+                Nothing -> Nothing
+                Just RedisRecord{rValue, rInsertedAt, rExpiryTime} ->
+                    case rExpiryTime of
+                        Nothing -> Just rValue
+                        Just exp -> if addUTCTime exp rInsertedAt > now then Just rValue else Nothing
+
     pure $ RedisTable set get
 
 runSet :: RedisTable -> Key -> Value -> SetOptions -> IO SetResult
 runSet RedisTable{redisSet} key value opts = do
-    redisSet key value opts
+    _ <- redisSet key value opts
     pure $ SetOK
 
 runGet :: RedisTable -> Key -> IO GetResult
