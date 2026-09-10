@@ -46,7 +46,6 @@ library:
     - Redis.Domain.Table
     - Redis.Infrastructure.Serialization.Result
     - Redis.Infrastructure.Serialization.Command
-    - Redis.Infrastructure.Dispatcher
     - Redis.Infrastructure.Table
     - Redis.Workflows.Ping
     - Redis.Workflows.Echo

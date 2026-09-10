@@ -8,9 +8,9 @@ import qualified Redis.Domain.Command as Command
 import Redis.Domain.Result (Result)
 import qualified Redis.Domain.Result as Result
 import Redis.Domain.Table
+import qualified Redis.Domain.Table as Table
 import Redis.Infrastructure.Serialization.Command (fromResp)
 import Redis.Infrastructure.Serialization.Result (toResp)
-import qualified Redis.Infrastructure.Table as Table
 import Resp (Resp, nullBulkString)
 
 data Env = Env {getTable :: RedisTable}

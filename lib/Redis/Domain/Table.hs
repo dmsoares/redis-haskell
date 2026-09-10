@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Redis.Domain.Table where
 
 import Data.ByteString (ByteString)
@@ -29,3 +31,13 @@ data SetResult = SetOK
     deriving (Show)
 data GetResult = GetNull | GetValue ByteString
     deriving (Show)
+
+runSet :: RedisTable -> Key -> Value -> SetOptions -> IO SetResult
+runSet RedisTable{redisSet} key value opts = do
+    _ <- redisSet key value opts
+    pure $ SetOK
+
+runGet :: RedisTable -> Key -> IO GetResult
+runGet RedisTable{redisGet} key = do
+    mValue <- redisGet key
+    pure $ maybe GetNull GetValue mValue
