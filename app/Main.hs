@@ -53,9 +53,6 @@ fullQuery sock buffer = do
 processQuery :: Socket -> RedisTable -> Resp -> IO ()
 processQuery socket table query = do
     putStrLn $ show query
-    mReply <- Redis.reply table query
-    putStrLn $ show mReply
-
-    case mReply of
-        Just reply -> send socket reply
-        Nothing -> pure ()
+    reply <- Redis.reply table query
+    putStrLn $ show reply
+    send socket (Resp.toBytes reply)

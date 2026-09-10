@@ -12,6 +12,7 @@ dependencies:
   - network # required when using bytestring
   - text # use Text rather than String
   - stm # may help with a concurrent database
+  - stm-containers
   - containers # may help with the database structure and debugging
   - time # may help with the expiry function
   - async # may help with concurrency
@@ -45,7 +46,11 @@ library:
     - Redis.Domain.Table
     - Redis.Infrastructure.Serialization.Result
     - Redis.Infrastructure.Serialization.Command
+    - Redis.Infrastructure.Dispatcher
     - Redis.Infrastructure.Table
-    - Redis.Application.Workflows.Reply
+    - Redis.Workflows.Ping
+    - Redis.Workflows.Echo
+    - Redis.Workflows.Set
+    - Redis.Workflows.Get
     - Resp.Data
     - Resp.Serialization

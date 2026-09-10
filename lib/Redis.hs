@@ -2,14 +2,12 @@
 
 module Redis (RedisTable, newRedisTable, reply) where
 
-import qualified Redis.Application.Workflows.Reply as Reply
 import Redis.Domain.Table (RedisTable)
 import Redis.Infrastructure.Table (newRedisTable)
 
 import Resp (Resp)
 
-import Control.Monad.Trans.Maybe (MaybeT (runMaybeT))
-import Data.ByteString (ByteString)
+import qualified Redis.Infrastructure.Dispatcher as Dispatcher
 
-reply :: RedisTable -> Resp -> IO (Maybe ByteString)
-reply table query = runMaybeT $ Reply.run table query
+reply :: RedisTable -> Resp -> IO Resp
+reply table query = Dispatcher.dispatch query table
