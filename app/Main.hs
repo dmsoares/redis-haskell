@@ -5,7 +5,6 @@ module Main (main) where
 
 import Control.Monad (forever)
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
 import Network.Simple.TCP (HostPreference (HostAny), Socket, closeSock, recv, send, serve)
 import System.IO (BufferMode (NoBuffering), hPutStrLn, hSetBuffering, stderr, stdout)
 
@@ -46,9 +45,11 @@ fullQuery sock buffer = do
     mBytes <- recv sock segmentSize
     case mBytes of
         Nothing -> pure Nothing
-        Just bytes -> case Resp.fromBytes bytes of
-            Nothing -> fullQuery sock (BS.append bytes buffer)
-            query -> pure query
+        Just bytes ->
+            let buffer' = bytes <> buffer
+             in case Resp.fromBytes buffer' of
+                    Nothing -> fullQuery sock buffer'
+                    query -> pure query
 
 processQuery :: Socket -> RedisTable -> Resp -> IO ()
 processQuery socket table query = do
