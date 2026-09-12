@@ -1,3 +1,5 @@
+# $schema: none
+
 name: codecrafters-redis
 version: 0.1.0.0
 license: BSD3
@@ -41,15 +43,16 @@ library:
     - Redis
     - Resp
   other-modules:
-    - Redis.Domain.Command
-    - Redis.Domain.Result
-    - Redis.Domain.Table
-    - Redis.Infrastructure.Serialization.Result
-    - Redis.Infrastructure.Serialization.Command
-    - Redis.Infrastructure.Table
+    - Redis.Data.Command
+    - Redis.Data.Table
+    - Redis.Table
     - Redis.Workflows.Ping
+    - Redis.Workflows.Ping.Data
     - Redis.Workflows.Echo
+    - Redis.Workflows.Echo.Data
     - Redis.Workflows.Set
+    - Redis.Workflows.Set.Data
     - Redis.Workflows.Get
+    - Redis.Workflows.Get.Data
     - Resp.Data
     - Resp.Serialization

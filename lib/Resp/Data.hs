@@ -2,6 +2,9 @@ module Resp.Data where
 
 import qualified Data.ByteString as BS
 
+class ToResp a where
+    toResp :: a -> Resp
+
 data Resp
     = RedisInteger Int
     | Array Int [Resp]

@@ -1,32 +1,13 @@
-module Redis.Workflows.Echo where
+module Redis.Workflows.Echo (run) where
 
-import Control.Monad (MonadPlus (mzero), (>=>))
-import Redis.Domain.Command (Command)
-import qualified Redis.Domain.Command as Command
-import Redis.Domain.Result (Result (Echo))
-import Redis.Infrastructure.Serialization.Command (fromResp)
-import Redis.Infrastructure.Serialization.Result (toResp)
-import Resp (Resp, nullBulkString)
+import Redis.Data.Command (EchoDto (EchoDto))
+import Redis.Workflows.Echo.Data (Input (Input), Message (Message), Reply (..))
 
-type Workflow a = Maybe a
+run :: EchoDto -> Reply
+run = execute . deserializeInput
 
-run :: Resp -> Resp
-run query = case workflow query of
-    Just res -> res
-    Nothing -> handleError
+execute :: Input -> Reply
+execute (Input (Message msg)) = Reply msg
 
-workflow :: Resp -> Workflow Resp
-workflow = parseCommand >=> buildResult >=> serializeResult
-
-parseCommand :: Resp -> Workflow Command
-parseCommand = fromResp
-
-buildResult :: Command -> Workflow Result
-buildResult (Command.Echo msg) = pure $ Echo msg
-buildResult _ = mzero
-
-serializeResult :: Result -> Workflow Resp
-serializeResult = pure . toResp
-
-handleError :: Resp
-handleError = nullBulkString
+deserializeInput :: EchoDto -> Input
+deserializeInput (EchoDto msg) = Input (Message msg)

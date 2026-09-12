@@ -1,8 +1,6 @@
 module Redis.Workflows.Ping where
 
-import Redis.Domain.Result (Result (Pong))
-import Redis.Infrastructure.Serialization.Result (toResp)
-import Resp (Resp)
+import Redis.Workflows.Ping.Data (Reply (Pong))
 
-run :: Resp -> Resp
-run _ = toResp Pong
+run :: Reply
+run = Pong

@@ -1,9 +1,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Redis.Infrastructure.Table where
+module Redis.Table where
 
-import Redis.Domain.Table
+import Redis.Data.Table
 
 import Control.Concurrent.STM (atomically)
 import Data.Time (addUTCTime, getCurrentTime)

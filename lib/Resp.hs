@@ -7,6 +7,7 @@ module Resp (
     simpleString,
     fromBytes,
     toBytes,
+    toResp,
 ) where
 
 import Resp.Data (
@@ -16,5 +17,6 @@ import Resp.Data (
     integer,
     nullBulkString,
     simpleString,
+    toResp,
  )
 import Resp.Serialization

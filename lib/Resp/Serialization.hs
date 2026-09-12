@@ -5,7 +5,7 @@ module Resp.Serialization where
 
 import Resp.Data (Resp (..))
 
-import Control.Monad (guard, when)
+import Control.Monad (guard)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
 import Data.Void
@@ -44,10 +44,16 @@ pInteger = do
 pBulkString :: Parser Resp
 pBulkString = do
     len <- pBulkStringLength
-    str <- some alphaNumChar
-    when (len /= length str) (fail "stated length of bulk string does not match actual length!")
+    body <- takeP (Just "bulk string body") len
     pCRLF
-    pure $ BulkString len (BS.pack str)
+    pure $ BulkString len body
+
+pNullBulkString :: Parser Resp
+pNullBulkString = do
+    len <- pBulkStringLength
+    guard $ len == -1
+    pCRLF
+    pure NullBulkString
 
 pBulkStringLength :: Parser Int
 pBulkStringLength = do
@@ -58,10 +64,15 @@ pBulkStringLength = do
 
 pArray :: Parser Resp
 pArray = do
-    len <- pArrayLength
-    elems <- some pRedisValue
-    when (len /= length elems) (fail "stated length of array does not match actual length!")
+    len <- pLength
+    elems <- count len pRedisValue
     pure $ Array len elems
+  where
+    pLength = do
+        _ <- char 42
+        n <- L.decimal
+        pCRLF
+        pure n
 
 pArrayLength :: Parser Int
 pArrayLength = do
@@ -76,13 +87,6 @@ pPureString = do
     str <- some alphaNumChar
     pCRLF
     pure $ SimpleString (BS.pack str)
-
-pNullBulkString :: Parser Resp
-pNullBulkString = do
-    len <- pBulkStringLength
-    guard $ len == -1
-    pCRLF
-    pure NullBulkString
 
 pRedisValue :: Parser Resp
 pRedisValue =
