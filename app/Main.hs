@@ -46,7 +46,7 @@ fullQuery sock buffer = do
     case mBytes of
         Nothing -> pure Nothing
         Just bytes ->
-            let buffer' = bytes <> buffer
+            let buffer' = buffer <> bytes
              in case Resp.fromBytes buffer' of
                     Nothing -> fullQuery sock buffer'
                     query -> pure query
