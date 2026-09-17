@@ -6,7 +6,7 @@ module Redis.Table where
 import Redis.Data.Table
 
 import Control.Concurrent.STM (atomically)
-import Data.Time (addUTCTime, getCurrentTime)
+import Data.Time (getCurrentTime)
 import qualified StmContainers.Map as Map
 import Prelude hiding (exp)
 
@@ -24,9 +24,6 @@ newRedisTable = do
             mValue <- atomically $ Map.lookup key table
             pure $ case mValue of
                 Nothing -> Nothing
-                Just RedisRecord{rValue, rInsertedAt, rExpiryTime} ->
-                    case rExpiryTime of
-                        Nothing -> Just rValue
-                        Just exp -> if addUTCTime exp rInsertedAt > now then Just rValue else Nothing
+                Just record -> liveValue now record
 
     pure $ RedisTable set get

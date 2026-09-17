@@ -10,7 +10,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
 import Data.Void
 import Text.Megaparsec
-import Text.Megaparsec.Byte (alphaNumChar, char)
+import Text.Megaparsec.Byte (char)
 import qualified Text.Megaparsec.Byte.Lexer as L
 
 toBytes :: Resp -> BS.ByteString
@@ -19,6 +19,7 @@ toBytes (RedisInteger n) = ":" <> Char8.pack (show n) <> crlf
 toBytes (Array len elems) = "*" <> Char8.pack (show len) <> crlf <> BS.concat (fmap toBytes elems)
 toBytes (SimpleString str) = "+" <> str <> crlf
 toBytes NullBulkString = "$" <> "-1" <> crlf
+toBytes (SimpleError str) = "-" <> str <> crlf
 
 crlf :: BS.ByteString
 crlf = "\r\n"
@@ -74,19 +75,19 @@ pArray = do
         pCRLF
         pure n
 
-pArrayLength :: Parser Int
-pArrayLength = do
-    _ <- char 42
-    n <- L.decimal
-    pCRLF
-    pure n
-
-pPureString :: Parser Resp
-pPureString = do
+pSimpleString :: Parser Resp
+pSimpleString = do
     _ <- char 43
-    str <- some alphaNumChar
+    str <- takeWhileP Nothing (/= 13)
     pCRLF
-    pure $ SimpleString (BS.pack str)
+    pure $ SimpleString str
+
+pSimpleError :: Parser Resp
+pSimpleError = do
+    _ <- char 45
+    str <- takeWhileP Nothing (/= 13)
+    pCRLF
+    pure $ SimpleError str
 
 pRedisValue :: Parser Resp
 pRedisValue =
@@ -94,4 +95,5 @@ pRedisValue =
         <|> pBulkString
         <|> pArray
         <|> pNullBulkString
-        <|> pPureString
+        <|> pSimpleString
+        <|> pSimpleError

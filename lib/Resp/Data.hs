@@ -11,6 +11,7 @@ data Resp
     | BulkString Int BS.ByteString
     | SimpleString BS.ByteString
     | NullBulkString
+    | SimpleError BS.ByteString
     deriving (Show)
 
 integer :: Int -> Resp
@@ -27,3 +28,6 @@ simpleString = SimpleString
 
 nullBulkString :: Resp
 nullBulkString = NullBulkString
+
+simpleError :: BS.ByteString -> Resp
+simpleError = SimpleError
