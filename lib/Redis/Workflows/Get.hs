@@ -1,35 +1,25 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Redis.Workflows.Get where
 
-import Control.Monad ((>=>))
-import Control.Monad.Reader (ReaderT (runReaderT), asks, liftIO)
-import Control.Monad.Trans.Maybe (MaybeT (runMaybeT))
+import Control.Monad.Reader (MonadIO, MonadReader, asks, liftIO)
+
 import Redis.Data.Command (GetPayload (GetPayload))
-import Redis.Data.Table (RedisTable (RedisTable), redisGet)
+import qualified Redis.Data.Table as Table
 import Redis.Workflows.Get.Data (Input (Input, key), Key (Key), Reply (..))
 
-data Env = Env {getTable :: RedisTable}
+data Env = Env {getKey :: Table.Key -> IO (Maybe Table.Value)}
 
-type Workflow a = ReaderT Env (MaybeT IO) a
+workflow :: (MonadReader Env m, MonadIO m) => GetPayload -> m Reply
+workflow = execute . deserializeInput
 
-run :: GetPayload -> RedisTable -> IO Reply
-run payload table = do
-    result <- runMaybeT $ runReaderT (workflow payload) (Env table)
-    pure $ maybe UnknownError id result
+deserializeInput :: GetPayload -> Input
+deserializeInput (GetPayload key) = Input (Key key)
 
-workflow :: GetPayload -> Workflow Reply
-workflow = deserializeInput >=> execute
-
-deserializeInput :: GetPayload -> Workflow Input
-deserializeInput (GetPayload key) = pure $ Input (Key key)
-
-execute :: Input -> Workflow Reply
-execute Input{key} = do
-    table <- asks getTable
-    liftIO $ handleGet table key
-
-handleGet :: RedisTable -> Key -> IO Reply
-handleGet RedisTable{redisGet} (Key key) = do
-    mValue <- redisGet key
-    pure $ maybe Null Value mValue
+execute :: (MonadReader Env m, MonadIO m) => Input -> m Reply
+execute Input{key = Key k} = do
+    get <- asks getKey
+    liftIO $ do
+        mValue <- get k
+        pure $ maybe Null Value mValue

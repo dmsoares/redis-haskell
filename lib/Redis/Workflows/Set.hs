@@ -1,32 +1,28 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Redis.Workflows.Set where
 
-import Control.Monad.Reader (ReaderT (runReaderT), asks, liftIO)
-import Control.Monad.Trans.Maybe (MaybeT (runMaybeT))
+import Control.Monad ((>=>))
+import Control.Monad.Reader (MonadIO, MonadReader, asks, liftIO)
 
+import Control.Monad.Except (MonadError, liftEither)
 import Redis.Data.Command (SetPayload (SetPayload))
-import Redis.Data.Table (RedisTable (..), SetOptions (SetOptions))
+import Redis.Data.Error (RedisError)
+import Redis.Data.Table (SetOptions (SetOptions))
 import qualified Redis.Data.Table as Table
 import Redis.Workflows.Set.Data (Input (..), Key (..), Options (..), Reply (..), Value (..), deserializeOptions)
 
-data Env = Env {getTable :: RedisTable}
+data Env = Env {setKey :: Table.Key -> Table.Value -> Table.SetOptions -> IO ()}
 
-type Workflow a = ReaderT Env (MaybeT IO) a
+workflow :: (MonadReader Env m, MonadError RedisError m, MonadIO m) => SetPayload -> m Reply
+workflow = deserializeInput >=> execute
 
-run :: SetPayload -> RedisTable -> IO Reply
-run payload table = do
-    result <- runMaybeT $ runReaderT (workflow payload) (Env table)
-    pure $ maybe UnknownError id result
+deserializeInput :: (MonadError RedisError m) => SetPayload -> m Input
+deserializeInput (SetPayload k v opts) = Input (Key k) (Value v) <$> liftEither (deserializeOptions opts)
 
-workflow :: SetPayload -> Workflow Reply
-workflow payload = deserializeInput payload >>= execute
-
-deserializeInput :: SetPayload -> Workflow Input
-deserializeInput (SetPayload k v opts) = pure $ Input (Key k) (Value v) (deserializeOptions opts)
-
-execute :: Input -> Workflow Reply
+execute :: (MonadReader Env m, MonadIO m) => Input -> m Reply
 execute Input{key = Key key, value = Value value, options = Options{expiryTime}} = do
-    RedisTable{redisSet} <- asks getTable
-    liftIO $ redisSet key value SetOptions{Table.expiryTime = expiryTime}
+    set <- asks setKey
+    liftIO $ set key value SetOptions{Table.expiryTime = expiryTime}
     pure $ OK

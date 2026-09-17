@@ -14,11 +14,9 @@ data Input = Input {key :: Key}
 data Reply
     = Null
     | Value ByteString
-    | UnknownError
     deriving (Show)
 
 -- Serialization
 instance ToResp Reply where
     toResp Null = nullBulkString
     toResp (Value v) = bulkString v
-    toResp UnknownError = nullBulkString

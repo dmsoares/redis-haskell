@@ -2,11 +2,12 @@
 
 module Redis.Workflows.Set.Data where
 
-import Control.Applicative (asum)
 import Data.ByteString (ByteString)
+import Data.Maybe (isJust)
 import Data.Time (NominalDiffTime)
 import Redis.Data.Command (SetOption (SetOptionEX, SetOptionPX))
-import Resp.Data (ToResp (toResp), nullBulkString, simpleString)
+import Redis.Data.Error (RedisError (..))
+import Resp.Data (ToResp (toResp), simpleString)
 
 newtype Key = Key ByteString
     deriving (Show)
@@ -22,16 +23,20 @@ data Input = Input
     }
     deriving (Show)
 
-data Reply = OK | UnknownError
+data Reply = OK
     deriving (Show)
 
 -- Serialization
-deserializeOptions :: [SetOption] -> Options
-deserializeOptions opts = Options{expiryTime = getExpiryTime opts}
+deserializeOptions :: [SetOption] -> Either RedisError Options
+deserializeOptions opts = Options <$> getExpiryTime opts
 
-getExpiryTime :: [SetOption] -> Maybe NominalDiffTime
-getExpiryTime opts = msToDiff <$> (asum $ fmap f opts)
+getExpiryTime :: [SetOption] -> Either RedisError (Maybe NominalDiffTime)
+getExpiryTime os = go (filter isJust $ fmap f os)
   where
+    go [] = Right Nothing
+    go [o] = Right $ fmap msToDiff o
+    go _ = Left ConflictingExpiryOptions
+
     f (SetOptionEX s) = Just (s * 1000)
     f (SetOptionPX ms) = Just ms
 
@@ -40,4 +45,3 @@ msToDiff ms = fromIntegral ms / 1000
 
 instance ToResp Reply where
     toResp OK = simpleString "OK"
-    toResp UnknownError = nullBulkString

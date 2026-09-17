@@ -8,10 +8,12 @@ module Resp (
     fromBytes,
     toBytes,
     toResp,
+    ToResp,
 ) where
 
 import Resp.Data (
     Resp (..),
+    ToResp,
     array,
     bulkString,
     integer,

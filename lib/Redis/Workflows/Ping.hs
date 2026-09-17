@@ -1,6 +1,6 @@
-module Redis.Workflows.Ping where
+module Redis.Workflows.Ping (workflow) where
 
 import Redis.Workflows.Ping.Data (Reply (Pong))
 
-run :: Reply
-run = Pong
+workflow :: Reply
+workflow = Pong

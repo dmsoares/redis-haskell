@@ -44,6 +44,7 @@ library:
     - Resp
   other-modules:
     - Redis.Data.Command
+    - Redis.Data.Error
     - Redis.Data.Table
     - Redis.Table
     - Redis.Workflows.Ping

@@ -5,8 +5,6 @@ import Data.Time (NominalDiffTime, UTCTime)
 
 type Key = ByteString
 type Value = ByteString
-type ExpiryTime = NominalDiffTime
-type Milliseconds = Int
 
 data RedisTable = RedisTable
     { redisSet :: Key -> Value -> SetOptions -> IO ()
@@ -16,11 +14,11 @@ data RedisTable = RedisTable
 data RedisRecord = RedisRecord
     { rValue :: Value
     , rInsertedAt :: UTCTime
-    , rExpiryTime :: Maybe ExpiryTime
+    , rExpiryTime :: Maybe NominalDiffTime
     }
     deriving (Show)
 
 data SetOptions = SetOptions
-    { expiryTime :: Maybe ExpiryTime
+    { expiryTime :: Maybe NominalDiffTime
     }
     deriving (Show)

@@ -1,13 +1,13 @@
-module Redis.Workflows.Echo (run) where
+module Redis.Workflows.Echo (workflow) where
 
-import Redis.Data.Command (EchoDto (EchoDto))
+import Redis.Data.Command (EchoPayload (EchoPayload))
 import Redis.Workflows.Echo.Data (Input (Input), Message (Message), Reply (..))
 
-run :: EchoDto -> Reply
-run = execute . deserializeInput
+workflow :: EchoPayload -> Reply
+workflow = execute . deserializeInput
 
 execute :: Input -> Reply
 execute (Input (Message msg)) = Reply msg
 
-deserializeInput :: EchoDto -> Input
-deserializeInput (EchoDto msg) = Input (Message msg)
+deserializeInput :: EchoPayload -> Input
+deserializeInput (EchoPayload msg) = Input (Message msg)

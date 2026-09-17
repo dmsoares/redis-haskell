@@ -11,12 +11,12 @@ import Resp (Resp (..))
 
 data Command
     = Ping
-    | Echo EchoDto
+    | Echo EchoPayload
     | Set SetPayload
     | Get GetPayload
     deriving (Show)
 
-data EchoDto = EchoDto {message :: ByteString}
+data EchoPayload = EchoPayload {message :: ByteString}
     deriving (Show)
 
 data SetPayload = SetPayload
@@ -39,7 +39,7 @@ data GetPayload = GetPayload
 -- Serialization
 fromResp :: Resp -> Maybe Command
 fromResp (Array _ [BulkString _ "PING"]) = Just Ping
-fromResp (Array _ [BulkString _ "ECHO", BulkString _ message]) = Just $ Echo (EchoDto{message})
+fromResp (Array _ [BulkString _ "ECHO", BulkString _ message]) = Just $ Echo (EchoPayload{message})
 fromResp (Array _ (BulkString _ "SET" : BulkString _ key : BulkString _ value : opts)) = Just $ Set (SetPayload key value (parseSetOptions opts))
 fromResp (Array _ [BulkString _ "GET", BulkString _ key]) = Just $ Get (GetPayload key)
 fromResp _ = Nothing
