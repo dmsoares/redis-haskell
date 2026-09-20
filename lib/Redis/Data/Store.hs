@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Redis.Data.Table where
+module Redis.Data.Store where
 
 import Data.ByteString (ByteString)
 import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
@@ -8,7 +8,7 @@ import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
 type Key = ByteString
 type Value = ByteString
 
-data RedisTable = RedisTable
+data RedisStore = RedisStore
     { redisSet :: Key -> Value -> SetOptions -> IO ()
     , redisGet :: Key -> IO (Maybe Value)
     }

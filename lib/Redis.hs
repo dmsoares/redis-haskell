@@ -1,27 +1,27 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Redis (RedisTable, newRedisTable, reply) where
+module Redis (RedisStore, newRedisStore, reply) where
 
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (ReaderT (runReaderT))
 
 import Redis.Data.Command (Command (..), fromResp)
 import Redis.Data.Error (RedisError (UnknownCommand))
-import Redis.Data.Table (RedisTable (..))
-import Redis.Table (newRedisTable)
+import Redis.Data.Store (RedisStore (..))
+import Redis.Store (newRedisStore)
 import qualified Redis.Workflows.Echo as Echo
 import qualified Redis.Workflows.Get as Get
 import qualified Redis.Workflows.Ping as Ping
 import qualified Redis.Workflows.Set as Set
 import Resp (Resp (..), ToResp, toResp)
 
-reply :: RedisTable -> Resp -> IO Resp
-reply table query = dispatch query table
+reply :: RedisStore -> Resp -> IO Resp
+reply = dispatch
 
 -- Dispatches to specific workflow
-dispatch :: Resp -> RedisTable -> IO Resp
-dispatch query RedisTable{redisSet, redisGet} = case fromResp query of
+dispatch :: RedisStore -> Resp -> IO Resp
+dispatch RedisStore{redisSet, redisGet} query = case fromResp query of
     Nothing -> runPure $ UnknownCommand
     Just cmd -> case cmd of
         Ping -> runPure Ping.workflow

@@ -6,10 +6,10 @@ module Redis.Workflows.Get where
 import Control.Monad.Reader (MonadIO, MonadReader, asks, liftIO)
 
 import Redis.Data.Command (GetPayload (GetPayload))
-import qualified Redis.Data.Table as Table
+import qualified Redis.Data.Store as Store
 import Redis.Workflows.Get.Data (Input (Input, key), Key (Key), Reply (..))
 
-data Env = Env {getKey :: Table.Key -> IO (Maybe Table.Value)}
+data Env = Env {getKey :: Store.Key -> IO (Maybe Store.Value)}
 
 workflow :: (MonadReader Env m, MonadIO m) => GetPayload -> m Reply
 workflow = execute . deserializeInput

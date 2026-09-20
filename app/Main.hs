@@ -8,7 +8,7 @@ import Data.ByteString (ByteString)
 import Network.Simple.TCP (HostPreference (HostAny), Socket, closeSock, recv, send, serve)
 import System.IO (BufferMode (NoBuffering), hPutStrLn, hSetBuffering, stderr, stdout)
 
-import Redis (RedisTable)
+import Redis (RedisStore)
 import qualified Redis as Redis
 import Resp (Resp)
 import qualified Resp as Resp
@@ -29,14 +29,14 @@ main = do
     let port = "6379"
     putStrLn $ "Redis server listening on port " ++ port
 
-    redisTable <- Redis.newRedisTable
+    redisStore <- Redis.newRedisStore
 
     serve HostAny port $ \(socket, address) -> do
         putStrLn $ "successfully connected client: " ++ show address
         _ <- forever $ do
             query <- fullQuery socket ""
             putStrLn $ "msg: " <> show query
-            maybe (pure ()) (processQuery socket redisTable) query
+            maybe (pure ()) (processQuery socket redisStore) query
         closeSock socket
 
 fullQuery :: Socket -> ByteString -> IO (Maybe Resp)
@@ -51,9 +51,9 @@ fullQuery sock buffer = do
                     Nothing -> fullQuery sock buffer'
                     query -> pure query
 
-processQuery :: Socket -> RedisTable -> Resp -> IO ()
-processQuery socket table query = do
+processQuery :: Socket -> RedisStore -> Resp -> IO ()
+processQuery socket store query = do
     putStrLn $ show query
-    reply <- Redis.reply table query
+    reply <- Redis.reply store query
     putStrLn $ show reply
     send socket (Resp.toBytes reply)
