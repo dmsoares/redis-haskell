@@ -11,6 +11,7 @@ dependencies:
   - base >= 4.19 && < 5
   - network-simple # establish a simple TCP network
   - bytestring # useful to send bytes over the network
+  - utf8-string
   - network # required when using bytestring
   - text # use Text rather than String
   - stm # may help with a concurrent database
@@ -47,6 +48,7 @@ library:
     - Redis.Data.Error
     - Redis.Data.Record
     - Redis.Data.Store
+    - Redis.Data.DataType
     - Redis.Store
     - Redis.Workflows.Ping
     - Redis.Workflows.Ping.Data

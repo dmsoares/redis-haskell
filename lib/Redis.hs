@@ -26,10 +26,9 @@ dispatch RedisStore{redisSet, redisGet} query = case fromResp query of
     Just cmd -> case cmd of
         Ping -> runPure Ping.workflow
         Echo payload -> runPure $ Echo.workflow payload
-        Set payload -> runSet (Set.Env redisSet) (Set.workflow payload)
-        Get payload -> runGet (Get.Env redisGet) (Get.workflow payload)
+        Set payload -> runEffectful (Set.Env redisSet) (Set.workflow payload)
+        Get payload -> runEffectful (Get.Env redisGet) (Get.workflow payload)
   where
     runPure :: (ToResp a) => a -> IO Resp
     runPure = pure . toResp
-    runSet env = fmap (either toResp toResp) . runExceptT . flip runReaderT env
-    runGet env = fmap toResp . flip runReaderT env
+    runEffectful env = fmap (either toResp toResp) . runExceptT . flip runReaderT env

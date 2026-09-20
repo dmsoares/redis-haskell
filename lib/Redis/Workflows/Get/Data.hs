@@ -12,11 +12,16 @@ data Input = Input {key :: Key}
     deriving (Show)
 
 data Reply
-    = Null
+    = Nil
     | Value ByteString
     deriving (Show)
 
+data Error
+    = DeadValue
+    | WrongType String
+    | NotFound
+
 -- Serialization
 instance ToResp Reply where
-    toResp Null = nullBulkString
+    toResp Nil = nullBulkString
     toResp (Value v) = bulkString v
