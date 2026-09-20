@@ -1,0 +1,367 @@
+digraph calligraphy {
+    node [style=filled fillcolor="#ffffffcf"];
+    graph [outputorder=edgesfirst];
+    subgraph cluster_module_module_1 {
+        label="Redis.Data.DataType";
+        bgcolor="whitesmoke"
+        node_0 [label="RedisDataType",shape=octagon,style="filled"];
+    }
+    subgraph cluster_module_module_2 {
+        label="Redis.Data.Error";
+        bgcolor="whitesmoke"
+        node_3 [label="RedisError",shape=octagon,style="filled"];
+    }
+    subgraph cluster_module_module_3 {
+        label="Redis.Data.Store";
+        bgcolor="whitesmoke"
+        node_8 [label="Key",shape=octagon,style="filled"];
+        node_9 [label="RedisStore",shape=octagon,style="filled"];
+    }
+    subgraph cluster_module_module_4 {
+        label="Redis.Data.Record";
+        bgcolor="whitesmoke"
+        node_13 [label="RedisRecord",shape=octagon,style="filled"];
+        node_18 [label="expiresAt",shape=ellipse,style="filled"];
+        node_19 [label="isLive",shape=ellipse,style="filled"];
+        node_20 [label="liveValue",shape=ellipse,style="filled"];
+    }
+    subgraph cluster_module_module_5 {
+        label="Redis.Data.Command";
+        bgcolor="whitesmoke"
+        node_21 [label="Command",shape=octagon,style="filled"];
+        node_26 [label="EchoPayload",shape=octagon,style="filled"];
+        node_29 [label="GetPayload",shape=octagon,style="filled"];
+        node_32 [label="SetOption",shape=octagon,style="filled"];
+        node_35 [label="SetPayload",shape=octagon,style="filled"];
+        node_40 [label="fromResp",shape=ellipse,style="filled"];
+        node_41 [label="parseInt",shape=ellipse,style="filled"];
+        node_42 [label="parseSetOptions",shape=ellipse,style="filled"];
+    }
+    subgraph cluster_module_module_6 {
+        label="Redis.Store";
+        bgcolor="whitesmoke"
+        subgraph cluster_node_43 {
+            style=invis;
+            node_43 [label="newRedisStore",shape=ellipse,style="filled"];
+            node_44 [label="get",shape=ellipse,style="dashed, filled"];
+            "node_43" -> "node_44" [style=dashed,arrowhead=none];
+            node_45 [label="set",shape=ellipse,style="dashed, filled"];
+            "node_43" -> "node_45" [style=dashed,arrowhead=none];
+        }
+    }
+    subgraph cluster_module_module_7 {
+        label="Redis.Workflows.Echo.Data";
+        bgcolor="whitesmoke"
+        node_46 [label="Input",shape=octagon,style="filled"];
+        node_49 [label="Message",shape=octagon,style="filled"];
+        node_51 [label="Reply",shape=octagon,style="filled"];
+    }
+    subgraph cluster_module_module_8 {
+        label="Redis.Workflows.Ping";
+        bgcolor="whitesmoke"
+        node_53 [label="workflow",shape=ellipse,style="filled"];
+    }
+    subgraph cluster_module_module_9 {
+        label="Redis.Workflows.Get.Data";
+        bgcolor="whitesmoke"
+        node_54 [label="Error",shape=octagon,style="filled"];
+        node_58 [label="Input",shape=octagon,style="filled"];
+        node_61 [label="Key",shape=octagon,style="filled"];
+        node_63 [label="Reply",shape=octagon,style="filled"];
+    }
+    subgraph cluster_module_module_10 {
+        label="Redis.Workflows.Echo";
+        bgcolor="whitesmoke"
+        node_66 [label="deserializeInput",shape=ellipse,style="dashed, filled"];
+        node_67 [label="execute",shape=ellipse,style="dashed, filled"];
+        node_68 [label="workflow",shape=ellipse,style="filled"];
+    }
+    subgraph cluster_module_module_11 {
+        label="Redis.Workflows.Ping.Data";
+        bgcolor="whitesmoke"
+        node_69 [label="Reply",shape=octagon,style="filled"];
+    }
+    subgraph cluster_module_module_12 {
+        label="Redis.Workflows.Get";
+        bgcolor="whitesmoke"
+        node_71 [label="Env",shape=octagon,style="filled"];
+        node_74 [label="deserializeInput",shape=ellipse,style="filled"];
+        subgraph cluster_node_75 {
+            style=invis;
+            node_75 [label="execute",shape=ellipse,style="filled"];
+            node_76 [label="handleResult",shape=ellipse,style="dashed, filled"];
+            "node_75" -> "node_76" [style=dashed,arrowhead=none];
+        }
+        node_77 [label="workflow",shape=ellipse,style="filled"];
+    }
+    subgraph cluster_module_module_13 {
+        label="Redis.Workflows.Set.Data";
+        bgcolor="whitesmoke"
+        node_78 [label="Input",shape=octagon,style="filled"];
+        node_83 [label="Key",shape=octagon,style="filled"];
+        node_85 [label="Options",shape=octagon,style="filled"];
+        node_88 [label="Reply",shape=octagon,style="filled"];
+        node_90 [label="Value",shape=octagon,style="filled"];
+        node_92 [label="deserializeOptions",shape=ellipse,style="filled"];
+        subgraph cluster_node_93 {
+            style=invis;
+            node_93 [label="getExpiryTime",shape=ellipse,style="filled"];
+            node_94 [label="f",shape=ellipse,style="dashed, filled"];
+            "node_93" -> "node_94" [style=dashed,arrowhead=none];
+            node_95 [label="go",shape=ellipse,style="dashed, filled"];
+            "node_93" -> "node_95" [style=dashed,arrowhead=none];
+        }
+        node_96 [label="msToDiff",shape=ellipse,style="filled"];
+    }
+    subgraph cluster_module_module_14 {
+        label="Redis.Workflows.Set";
+        bgcolor="whitesmoke"
+        node_97 [label="Env",shape=octagon,style="filled"];
+        node_100 [label="deserializeInput",shape=ellipse,style="filled"];
+        node_101 [label="execute",shape=ellipse,style="filled"];
+        node_102 [label="workflow",shape=ellipse,style="filled"];
+    }
+    subgraph cluster_module_module_15 {
+        label="Main";
+        bgcolor="whitesmoke"
+        subgraph cluster_node_103 {
+            style=invis;
+            node_103 [label="fullQuery",shape=ellipse,style="dashed, filled"];
+            node_104 [label="buffer'",shape=ellipse,style="dashed, filled"];
+            "node_103" -> "node_104" [style=dashed,arrowhead=none];
+        }
+        subgraph cluster_node_105 {
+            style=invis;
+            node_105 [label="main",shape=ellipse,style="filled"];
+            node_106 [label="port",shape=ellipse,style="dashed, filled"];
+            "node_105" -> "node_106" [style=dashed,arrowhead=none];
+        }
+        node_107 [label="processQuery",shape=ellipse,style="dashed, filled"];
+        node_108 [label="segmentSize",shape=ellipse,style="dashed, filled"];
+    }
+    subgraph cluster_module_module_16 {
+        label="Redis";
+        bgcolor="whitesmoke"
+        subgraph cluster_node_109 {
+            style=invis;
+            node_109 [label="dispatch",shape=ellipse,style="dashed, filled"];
+            node_110 [label="runEffectful",shape=ellipse,style="dashed, filled"];
+            "node_109" -> "node_110" [style=dashed,arrowhead=none];
+            node_111 [label="runPure",shape=ellipse,style="dashed, filled"];
+            "node_109" -> "node_111" [style=dashed,arrowhead=none];
+        }
+        node_112 [label="reply",shape=ellipse,style="filled"];
+    }
+    subgraph cluster_module_module_17 {
+        label="Resp.Serialization";
+        bgcolor="whitesmoke"
+        node_113 [label="Parser",shape=octagon,style="filled"];
+        node_114 [label="crlf",shape=ellipse,style="filled"];
+        node_115 [label="fromBytes",shape=ellipse,style="filled"];
+        subgraph cluster_node_116 {
+            style=invis;
+            node_116 [label="pArray",shape=ellipse,style="filled"];
+            node_117 [label="pLength",shape=ellipse,style="dashed, filled"];
+            "node_116" -> "node_117" [style=dashed,arrowhead=none];
+        }
+        node_118 [label="pBulkString",shape=ellipse,style="filled"];
+        node_119 [label="pBulkStringLength",shape=ellipse,style="filled"];
+        node_120 [label="pCRLF",shape=ellipse,style="filled"];
+        node_121 [label="pInteger",shape=ellipse,style="filled"];
+        node_122 [label="pNullBulkString",shape=ellipse,style="filled"];
+        node_123 [label="pRedisValue",shape=ellipse,style="filled"];
+        node_124 [label="pSimpleError",shape=ellipse,style="filled"];
+        node_125 [label="pSimpleString",shape=ellipse,style="filled"];
+        node_126 [label="toBytes",shape=ellipse,style="filled"];
+    }
+    subgraph cluster_module_module_18 {
+        label="Resp.Data";
+        bgcolor="whitesmoke"
+        node_127 [label="Resp",shape=octagon,style="filled"];
+        subgraph cluster_node_134 {
+            style=invis;
+            node_134 [label="ToResp",shape=house,style="filled"];
+            node_135 [label="toResp",shape=ellipse,style="filled"];
+            "node_134" -> "node_135" [style=dashed,arrowhead=none];
+        }
+        node_136 [label="array",shape=ellipse,style="filled"];
+        node_137 [label="bulkString",shape=ellipse,style="filled"];
+        node_138 [label="integer",shape=ellipse,style="filled"];
+        node_139 [label="nullBulkString",shape=ellipse,style="filled"];
+        node_140 [label="simpleError",shape=ellipse,style="filled"];
+        node_141 [label="simpleString",shape=ellipse,style="filled"];
+    }
+    "node_35" -> "node_100" [dir=back];
+    "node_78" -> "node_100" [dir=back];
+    "node_83" -> "node_100" [dir=back];
+    "node_90" -> "node_100" [dir=back];
+    "node_92" -> "node_100" [dir=back];
+    "node_0" -> "node_101" [dir=back];
+    "node_13" -> "node_101" [dir=back];
+    "node_78" -> "node_101" [dir=back];
+    "node_83" -> "node_101" [dir=back];
+    "node_85" -> "node_101" [dir=back];
+    "node_88" -> "node_101" [dir=back];
+    "node_90" -> "node_101" [dir=back];
+    "node_97" -> "node_101" [dir=back];
+    "node_100" -> "node_102" [dir=back];
+    "node_101" -> "node_102" [dir=back];
+    "node_104" -> "node_103" [dir=back];
+    "node_108" -> "node_103" [dir=back];
+    "node_115" -> "node_103" [dir=back];
+    "node_103" -> "node_105" [dir=back];
+    "node_106" -> "node_105" [dir=back];
+    "node_107" -> "node_105" [dir=back];
+    "node_43" -> "node_105" [dir=back];
+    "node_112" -> "node_107" [dir=back];
+    "node_126" -> "node_107" [dir=back];
+    "node_102" -> "node_109" [dir=back];
+    "node_110" -> "node_109" [dir=back];
+    "node_111" -> "node_109" [dir=back];
+    "node_21" -> "node_109" [dir=back];
+    "node_3" -> "node_109" [dir=back];
+    "node_40" -> "node_109" [dir=back];
+    "node_53" -> "node_109" [dir=back];
+    "node_68" -> "node_109" [dir=back];
+    "node_71" -> "node_109" [dir=back];
+    "node_77" -> "node_109" [dir=back];
+    "node_9" -> "node_109" [dir=back];
+    "node_97" -> "node_109" [dir=back];
+    "node_135" -> "node_110" [dir=back];
+    "node_135" -> "node_111" [dir=back];
+    "node_109" -> "node_112" [dir=back];
+    "node_123" -> "node_115" [dir=back];
+    "node_117" -> "node_116" [dir=back];
+    "node_123" -> "node_116" [dir=back];
+    "node_127" -> "node_116" [dir=back];
+    "node_120" -> "node_117" [dir=back];
+    "node_119" -> "node_118" [dir=back];
+    "node_120" -> "node_118" [dir=back];
+    "node_127" -> "node_118" [dir=back];
+    "node_120" -> "node_119" [dir=back];
+    "node_120" -> "node_121" [dir=back];
+    "node_127" -> "node_121" [dir=back];
+    "node_119" -> "node_122" [dir=back];
+    "node_120" -> "node_122" [dir=back];
+    "node_127" -> "node_122" [dir=back];
+    "node_116" -> "node_123" [dir=back];
+    "node_118" -> "node_123" [dir=back];
+    "node_121" -> "node_123" [dir=back];
+    "node_122" -> "node_123" [dir=back];
+    "node_124" -> "node_123" [dir=back];
+    "node_125" -> "node_123" [dir=back];
+    "node_120" -> "node_124" [dir=back];
+    "node_127" -> "node_124" [dir=back];
+    "node_120" -> "node_125" [dir=back];
+    "node_127" -> "node_125" [dir=back];
+    "node_114" -> "node_126" [dir=back];
+    "node_127" -> "node_126" [dir=back];
+    "node_0" -> "node_13" [dir=back];
+    "node_127" -> "node_135" [dir=back];
+    "node_127" -> "node_136" [dir=back];
+    "node_127" -> "node_137" [dir=back];
+    "node_127" -> "node_138" [dir=back];
+    "node_127" -> "node_139" [dir=back];
+    "node_127" -> "node_140" [dir=back];
+    "node_127" -> "node_141" [dir=back];
+    "node_13" -> "node_18" [dir=back];
+    "node_18" -> "node_19" [dir=back];
+    "node_13" -> "node_20" [dir=back];
+    "node_19" -> "node_20" [dir=back];
+    "node_26" -> "node_21" [dir=back];
+    "node_29" -> "node_21" [dir=back];
+    "node_35" -> "node_21" [dir=back];
+    "node_32" -> "node_35" [dir=back];
+    "node_127" -> "node_40" [dir=back];
+    "node_21" -> "node_40" [dir=back];
+    "node_26" -> "node_40" [dir=back];
+    "node_29" -> "node_40" [dir=back];
+    "node_35" -> "node_40" [dir=back];
+    "node_42" -> "node_40" [dir=back];
+    "node_127" -> "node_42" [dir=back];
+    "node_32" -> "node_42" [dir=back];
+    "node_41" -> "node_42" [dir=back];
+    "node_44" -> "node_43" [dir=back];
+    "node_45" -> "node_43" [dir=back];
+    "node_9" -> "node_43" [dir=back];
+    "node_49" -> "node_46" [dir=back];
+    "node_69" -> "node_53" [dir=back];
+    "node_61" -> "node_58" [dir=back];
+    "node_26" -> "node_66" [dir=back];
+    "node_46" -> "node_66" [dir=back];
+    "node_49" -> "node_66" [dir=back];
+    "node_46" -> "node_67" [dir=back];
+    "node_49" -> "node_67" [dir=back];
+    "node_51" -> "node_67" [dir=back];
+    "node_66" -> "node_68" [dir=back];
+    "node_67" -> "node_68" [dir=back];
+    "node_13" -> "node_71" [dir=back];
+    "node_8" -> "node_71" [dir=back];
+    "node_29" -> "node_74" [dir=back];
+    "node_58" -> "node_74" [dir=back];
+    "node_61" -> "node_74" [dir=back];
+    "node_0" -> "node_75" [dir=back];
+    "node_13" -> "node_75" [dir=back];
+    "node_19" -> "node_75" [dir=back];
+    "node_54" -> "node_75" [dir=back];
+    "node_58" -> "node_75" [dir=back];
+    "node_61" -> "node_75" [dir=back];
+    "node_71" -> "node_75" [dir=back];
+    "node_76" -> "node_75" [dir=back];
+    "node_3" -> "node_76" [dir=back];
+    "node_54" -> "node_76" [dir=back];
+    "node_63" -> "node_76" [dir=back];
+    "node_74" -> "node_77" [dir=back];
+    "node_75" -> "node_77" [dir=back];
+    "node_83" -> "node_78" [dir=back];
+    "node_85" -> "node_78" [dir=back];
+    "node_90" -> "node_78" [dir=back];
+    "node_13" -> "node_9" [dir=back];
+    "node_8" -> "node_9" [dir=back];
+    "node_85" -> "node_92" [dir=back];
+    "node_93" -> "node_92" [dir=back];
+    "node_94" -> "node_93" [dir=back];
+    "node_95" -> "node_93" [dir=back];
+    "node_32" -> "node_94" [dir=back];
+    "node_3" -> "node_95" [dir=back];
+    "node_96" -> "node_95" [dir=back];
+    "node_13" -> "node_97" [dir=back];
+    "node_8" -> "node_97" [dir=back];
+    "node_3" -> "node_100" [style=dotted,dir=back];
+    "node_3" -> "node_102" [style=dotted,dir=back];
+    "node_35" -> "node_102" [style=dotted,dir=back];
+    "node_88" -> "node_102" [style=dotted,dir=back];
+    "node_97" -> "node_102" [style=dotted,dir=back];
+    "node_127" -> "node_103" [style=dotted,dir=back];
+    "node_127" -> "node_107" [style=dotted,dir=back];
+    "node_9" -> "node_107" [style=dotted,dir=back];
+    "node_127" -> "node_109" [style=dotted,dir=back];
+    "node_127" -> "node_110" [style=dotted,dir=back];
+    "node_134" -> "node_110" [style=dotted,dir=back];
+    "node_127" -> "node_111" [style=dotted,dir=back];
+    "node_134" -> "node_111" [style=dotted,dir=back];
+    "node_127" -> "node_112" [style=dotted,dir=back];
+    "node_9" -> "node_112" [style=dotted,dir=back];
+    "node_127" -> "node_115" [style=dotted,dir=back];
+    "node_113" -> "node_120" [style=dotted,dir=back];
+    "node_127" -> "node_123" [style=dotted,dir=back];
+    "node_13" -> "node_19" [style=dotted,dir=back];
+    "node_0" -> "node_20" [style=dotted,dir=back];
+    "node_13" -> "node_44" [style=dotted,dir=back];
+    "node_8" -> "node_44" [style=dotted,dir=back];
+    "node_13" -> "node_45" [style=dotted,dir=back];
+    "node_8" -> "node_45" [style=dotted,dir=back];
+    "node_26" -> "node_68" [style=dotted,dir=back];
+    "node_51" -> "node_68" [style=dotted,dir=back];
+    "node_3" -> "node_75" [style=dotted,dir=back];
+    "node_63" -> "node_75" [style=dotted,dir=back];
+    "node_8" -> "node_76" [style=dotted,dir=back];
+    "node_29" -> "node_77" [style=dotted,dir=back];
+    "node_3" -> "node_77" [style=dotted,dir=back];
+    "node_63" -> "node_77" [style=dotted,dir=back];
+    "node_71" -> "node_77" [style=dotted,dir=back];
+    "node_3" -> "node_92" [style=dotted,dir=back];
+    "node_32" -> "node_92" [style=dotted,dir=back];
+    "node_3" -> "node_93" [style=dotted,dir=back];
+    "node_32" -> "node_93" [style=dotted,dir=back];
+}

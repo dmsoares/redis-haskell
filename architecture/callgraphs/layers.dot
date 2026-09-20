@@ -1,0 +1,80 @@
+// Drawn from the actual `import` lists in lib/ and app/.
+// There is no shared workflow monad: each workflow declares mtl constraints,
+// and the root picks one runner per effect shape.
+digraph layers {
+    graph [rankdir=TB, splines=spline, nodesep=0.35, ranksep=0.75, fontname="Helvetica"];
+    node  [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10.5, penwidth=1.6];
+    edge  [fontname="Helvetica", fontsize=9];
+    labelloc="t"; fontsize=19;
+    label="No shared workflow monad — each workflow declares its effects, the root interprets them";
+
+    subgraph cluster_adapter {
+        label="Driving adapter"; style=filled; fillcolor="#fdf0f0"; color="#c1666b"; fontsize=12;
+        main [label="Main\nTCP loop · fullQuery", fillcolor="#ffd9d9", color="#9d0208"];
+    }
+    subgraph cluster_root {
+        label="Composition root + dispatcher — the ONLY module naming a concrete stack";
+        style=filled; fillcolor="#f2f2f2"; color="#868e96"; fontsize=12;
+        redis [label="Redis\ndispatch\nrunPure · runSet · runGet", fillcolor="#e9ecef", color="#495057"];
+    }
+    subgraph cluster_wf {
+        label="Workflows — constrained, stack-agnostic"; style=filled; fillcolor="#fff8e6"; color="#bc6c25"; fontsize=12;
+        wping [label="Ping\nrun :: Reply\n(no monad)", fillcolor="#d8f0e0", color="#2d6a4f"];
+        wecho [label="Echo\nrun :: Payload -> Reply\n(no monad)", fillcolor="#d8f0e0", color="#2d6a4f"];
+        wget  [label="Get  + Env\nMonadReader, MonadError, MonadIO", fillcolor="#ffe8bf", color="#bc6c25"];
+        wset  [label="Set  + Env\nMonadReader, MonadError, MonadIO", fillcolor="#ffe8bf", color="#bc6c25"];
+    }
+    subgraph cluster_dto {
+        label="Shared inbound DTO + error"; style=filled; fillcolor="#eaf4ff"; color="#1d6fa5"; fontsize=12;
+        dcmd [label="Redis.Data.Command\nCommand · SetPayload · GetPayload\nfromResp", fillcolor="#cfe8ff", color="#1d6fa5"];
+        derr [label="Redis.Data.Error\nRedisError\nToResp -> SimpleError", fillcolor="#cfe8ff", color="#1d6fa5"];
+    }
+    subgraph cluster_port {
+        label="Port + stored value"; style=filled; fillcolor="#f3ecff"; color="#6d28d9"; fontsize=12;
+        drec [label="Redis.Data.Record + .DataType\nRedisRecord · RedisDataType\nexpiresAt · isLive · liveValue  (pure rule)", fillcolor="#d8f0e0", color="#2d6a4f"];
+        dtab [label="Redis.Data.Store\nRedisStore { … :: IO … }", fillcolor="#d8b4fe", color="#6d28d9"];
+    }
+    subgraph cluster_driven {
+        label="Driven adapter"; style=filled; fillcolor="#f6f0ff"; color="#6d28d9"; fontsize=12;
+        itable [label="Redis.Store\nnewRedisStore (STM map only)", fillcolor="#e6d9ff", color="#6d28d9"];
+    }
+    subgraph cluster_resp {
+        label="Resp — separate exposed library, 19/19 pure"; style=filled; fillcolor="#eefaf3"; color="#2d6a4f"; fontsize=12;
+        rdata [label="Resp.Data\nResp AST (+ SimpleError) · class ToResp", fillcolor="#d8f0e0", color="#2d6a4f"];
+        rser  [label="Resp.Serialization\ntoBytes / fromBytes\n(fromBytes drops trailing bytes)", fillcolor="#d8f0e0", color="#2d6a4f"];
+    }
+
+    main -> redis; main -> rser; main -> dtab [style=dotted]; main -> itable [style=dotted];
+    redis -> wping; redis -> wecho; redis -> wset; redis -> wget;
+    redis -> dcmd; redis -> derr; redis -> rdata; redis -> dtab;
+    wset -> dcmd; wget -> dcmd; wecho -> dcmd;
+    wset -> derr;
+    wset -> dtab [style=dotted]; wget -> dtab [style=dotted];
+    wset -> drec; wget -> drec;
+    dcmd -> rdata; derr -> rdata;
+    itable -> dtab; dtab -> drec; itable -> drec [style=dotted];
+    rser -> rdata;
+    main -> itable [style=dashed, color="#868e96", label="  newRedisStore"];
+    redis -> itable [style=dashed, color="#868e96", label="  wires the adapter"];
+
+    edge [color="#bc6c25", penwidth=1.5, style=dashed, fontcolor="#bc6c25"];
+    wping -> rdata; wecho -> rdata; wget -> rdata; wset -> rdata;
+
+    subgraph cluster_legend {
+        label="Legend"; style=filled; fillcolor="white"; color="#adb5bd"; fontsize=13;
+        node [shape=plaintext, style="", fillcolor="none", penwidth=0];
+        key [label=<
+          <table border="0" cellborder="0" cellspacing="4" cellpadding="3">
+            <tr><td bgcolor="#d8f0e0" width="16"></td><td align="left">entirely pure module</td></tr>
+            <tr><td bgcolor="#ffe8bf" width="16"></td><td align="left">workflow that performs IO</td></tr>
+            <tr><td bgcolor="#cfe8ff" width="16"></td><td align="left">shared DTO / domain error</td></tr>
+            <tr><td bgcolor="#d8b4fe" width="16"></td><td align="left">port — IO declared, not performed</td></tr>
+            <tr><td bgcolor="#e6d9ff" width="16"></td><td align="left">driven adapter</td></tr>
+            <tr><td><font color="#bc6c25"><b>&#8594;</b></font></td><td align="left"><font color="#bc6c25">ToResp instance (no call-graph node)</font></td></tr>
+            <tr><td>&#183;&#183;&#183;&#183;</td><td align="left">type-only dependency</td></tr>
+            <tr><td colspan="2" align="left"><br align="left"/><b>No cycles. No workflow names a monad stack.</b></td></tr>
+            <tr><td colspan="2" align="left">42 of 56 bindings pure; 0 disguised.</td></tr>
+          </table>
+        >];
+    }
+}
