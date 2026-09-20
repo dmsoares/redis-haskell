@@ -3,6 +3,7 @@
 
 module Redis.Store where
 
+import Redis.Data.Record (RedisRecord (RedisRecord), liveValue)
 import Redis.Data.Store
 
 import Control.Concurrent.STM (atomically)
@@ -16,7 +17,7 @@ newRedisStore = do
 
     let set = \key value opts -> do
             now <- getCurrentTime
-            let record = RedisRecord{rValue = value, rInsertedAt = now, rExpiryTime = (expiryTime opts)}
+            let record = RedisRecord value now (expiryTime opts)
             atomically $ Map.insert record key store
 
     let get = \key -> do

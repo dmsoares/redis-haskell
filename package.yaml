@@ -45,6 +45,7 @@ library:
   other-modules:
     - Redis.Data.Command
     - Redis.Data.Error
+    - Redis.Data.Record
     - Redis.Data.Store
     - Redis.Store
     - Redis.Workflows.Ping
