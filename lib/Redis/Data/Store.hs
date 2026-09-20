@@ -1,17 +1,11 @@
 module Redis.Data.Store where
 
 import Data.ByteString (ByteString)
-import Data.Time (NominalDiffTime)
+import Redis.Data.Record (RedisRecord)
 
 type Key = ByteString
-type Value = ByteString
 
 data RedisStore = RedisStore
-    { redisSet :: Key -> Value -> SetOptions -> IO ()
-    , redisGet :: Key -> IO (Maybe Value)
+    { redisSet :: Key -> RedisRecord -> IO ()
+    , redisGet :: Key -> IO (Maybe RedisRecord)
     }
-
-data SetOptions = SetOptions
-    { expiryTime :: Maybe NominalDiffTime
-    }
-    deriving (Show)
