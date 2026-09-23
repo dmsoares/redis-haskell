@@ -2,10 +2,9 @@
 
 module Redis.Workflows.Ping.Data where
 
-import Resp (simpleString)
-import Resp.Data (ToResp (..))
+import Resp.Data (Resp (SimpleString), ToResp (..))
 
 data Reply = Pong deriving (Show)
 
 instance ToResp Reply where
-    toResp _ = simpleString "PONG"
+    toResp _ = SimpleString "PONG"

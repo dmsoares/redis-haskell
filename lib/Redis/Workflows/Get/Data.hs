@@ -2,8 +2,7 @@ module Redis.Workflows.Get.Data where
 
 import Data.ByteString (ByteString)
 
-import Resp (bulkString, nullBulkString)
-import Resp.Data (ToResp (toResp))
+import Resp.Data (Resp (BulkString, NullBulkString), ToResp (toResp))
 
 newtype Key = Key ByteString
     deriving (Show)
@@ -23,5 +22,5 @@ data Error
 
 -- Serialization
 instance ToResp Reply where
-    toResp Nil = nullBulkString
-    toResp (Value v) = bulkString v
+    toResp Nil = NullBulkString
+    toResp (Value v) = BulkString v

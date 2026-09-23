@@ -38,15 +38,15 @@ data GetPayload = GetPayload
 
 -- Serialization
 fromResp :: Resp -> Maybe Command
-fromResp (Array _ [BulkString _ "PING"]) = Just Ping
-fromResp (Array _ [BulkString _ "ECHO", BulkString _ message]) = Just $ Echo (EchoPayload{message})
-fromResp (Array _ (BulkString _ "SET" : BulkString _ key : BulkString _ value : opts)) = Just $ Set (SetPayload key value (parseSetOptions opts))
-fromResp (Array _ [BulkString _ "GET", BulkString _ key]) = Just $ Get (GetPayload key)
+fromResp (Array [BulkString "PING"]) = Just Ping
+fromResp (Array [BulkString "ECHO", BulkString message]) = Just $ Echo (EchoPayload{message})
+fromResp (Array (BulkString "SET" : BulkString key : BulkString value : opts)) = Just $ Set (SetPayload key value (parseSetOptions opts))
+fromResp (Array [BulkString "GET", BulkString key]) = Just $ Get (GetPayload key)
 fromResp _ = Nothing
 
 parseSetOptions :: [Resp] -> [SetOption]
-parseSetOptions (BulkString _ "EX" : BulkString _ s : dts) = SetOptionEX (parseInt s) : parseSetOptions dts
-parseSetOptions (BulkString _ "PX" : BulkString _ ms : dts) = SetOptionPX (parseInt ms) : parseSetOptions dts
+parseSetOptions (BulkString "EX" : BulkString s : dts) = SetOptionEX (parseInt s) : parseSetOptions dts
+parseSetOptions (BulkString "PX" : BulkString ms : dts) = SetOptionPX (parseInt ms) : parseSetOptions dts
 parseSetOptions _ = []
 
 parseInt :: ByteString -> Int

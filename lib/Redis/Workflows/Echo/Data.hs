@@ -1,8 +1,7 @@
 module Redis.Workflows.Echo.Data where
 
 import Data.ByteString (ByteString)
-import Resp (bulkString)
-import Resp.Data (ToResp (..))
+import Resp.Data (Resp (BulkString), ToResp (..))
 
 newtype Message = Message ByteString
     deriving (Show)
@@ -14,4 +13,4 @@ newtype Reply = Reply ByteString
     deriving (Show)
 
 instance ToResp Reply where
-    toResp (Reply msg) = bulkString msg
+    toResp (Reply msg) = BulkString msg

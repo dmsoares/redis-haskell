@@ -7,7 +7,7 @@ import Data.Maybe (isJust)
 import Data.Time (NominalDiffTime)
 import Redis.Data.Command (SetOption (SetOptionEX, SetOptionPX))
 import Redis.Data.Error (RedisError (..))
-import Resp.Data (ToResp (toResp), simpleString)
+import Resp.Data (Resp (SimpleString), ToResp (toResp))
 
 newtype Key = Key ByteString
     deriving (Show)
@@ -44,4 +44,4 @@ msToDiff :: (Integral a) => a -> NominalDiffTime
 msToDiff ms = fromIntegral ms / 1000
 
 instance ToResp Reply where
-    toResp OK = simpleString "OK"
+    toResp OK = SimpleString "OK"
