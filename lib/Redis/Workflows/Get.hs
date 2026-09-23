@@ -4,7 +4,7 @@
 module Redis.Workflows.Get where
 
 import Control.Monad.Reader (MonadIO, MonadReader, asks, liftIO)
-import Data.Time (getCurrentTime)
+import Data.Time (UTCTime)
 
 import Control.Monad.Except (MonadError (throwError))
 import Redis.Data.Command (GetPayload (GetPayload))
@@ -14,7 +14,7 @@ import Redis.Data.Record (RedisRecord (RedisRecord, value), isLive)
 import qualified Redis.Data.Store as Store
 import Redis.Workflows.Get.Data (Error (..), Input (Input, key), Key (Key), Reply (..))
 
-data Env = Env {getKey :: Store.Key -> IO (Maybe RedisRecord)}
+data Env = Env {receivedAt :: UTCTime, getKey :: Store.Key -> IO (Maybe RedisRecord)}
 
 workflow :: (MonadReader Env m, MonadError RedisError m, MonadIO m) => GetPayload -> m Reply
 workflow = execute . deserializeInput
@@ -24,7 +24,7 @@ deserializeInput (GetPayload key) = Input (Key key)
 
 execute :: (MonadReader Env m, MonadError RedisError m, MonadIO m) => Input -> m Reply
 execute Input{key = Key k} = do
-    now <- liftIO getCurrentTime
+    now <- asks receivedAt
     get <- asks getKey
     mRecord <- liftIO $ get k
     handleResult $ do

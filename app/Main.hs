@@ -8,6 +8,7 @@ import Data.ByteString (ByteString)
 import Network.Simple.TCP (HostPreference (HostAny), Socket, closeSock, recv, send, serve)
 import System.IO (BufferMode (NoBuffering), hPutStrLn, hSetBuffering, stderr, stdout)
 
+import Data.Time (UTCTime, getCurrentTime)
 import Redis (RedisStore)
 import qualified Redis as Redis
 import Resp (Resp)
@@ -35,8 +36,10 @@ main = do
         putStrLn $ "successfully connected client: " ++ show address
         _ <- forever $ do
             query <- fullQuery socket ""
+            -- currentTime needs to be read *after* the blocking fullQuery action
+            now <- getCurrentTime
             putStrLn $ "msg: " <> show query
-            maybe (pure ()) (processQuery socket redisStore) query
+            maybe (pure ()) (processQuery socket now redisStore) query
         closeSock socket
 
 fullQuery :: Socket -> ByteString -> IO (Maybe Resp)
@@ -51,9 +54,9 @@ fullQuery sock buffer = do
                     Nothing -> fullQuery sock buffer'
                     query -> pure query
 
-processQuery :: Socket -> RedisStore -> Resp -> IO ()
-processQuery socket store query = do
+processQuery :: Socket -> UTCTime -> RedisStore -> Resp -> IO ()
+processQuery socket now store query = do
     putStrLn $ show query
-    reply <- Redis.reply store query
+    reply <- Redis.reply now store query
     putStrLn $ show reply
     send socket (Resp.toBytes reply)
