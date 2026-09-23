@@ -43,7 +43,6 @@ library:
   exposed-modules:
     - Redis
     - Resp
-  other-modules:
     - Redis.Data.Command
     - Redis.Data.Error
     - Redis.Data.Record
@@ -60,3 +59,18 @@ library:
     - Redis.Workflows.Get.Data
     - Resp.Data
     - Resp.Serialization
+
+tests:
+  spec:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - codecrafters-redis
+      - hspec
+      - QuickCheck
+    build-tools:
+      - hspec-discover
