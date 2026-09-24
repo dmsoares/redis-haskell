@@ -99,6 +99,8 @@ spec = do
                 rejects ("$abc" <> crlf)
             it "a non-numeric array length" $
                 rejects ("*x" <> crlf)
+            it "a negative array length" $
+                rejects ("*-1" <> crlf)
             it "a bulk string longer than its declared length" $
                 rejects ("$2" <> crlf <> "hello" <> crlf)
   where

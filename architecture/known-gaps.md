@@ -24,7 +24,7 @@ on a spare port with `redis-server --port 6390 --save "" --appendonly no` and ta
 |---|-----|------|--------|
 | 1 | `Resp` can hold values RESP cannot encode | protocol / data design | open |
 | 2 | `fromBytes` silently discards trailing bytes | protocol | deferred |
-| 3 | `*-1\r\n` parses as an empty array | protocol | open |
+| 3 | RESP2 null array unsupported | protocol | open |
 | 4 | `$-2\r\n` parses as `NullBulkString` | protocol | open |
 | 5 | `RedisInteger` overflows silently | protocol | open |
 | 6 | Commands and options are case-sensitive | command parsing | deferred |
@@ -131,36 +131,39 @@ command. `Text.Megaparsec.getInput` gives the remainder after a successful parse
 
 ---
 
-## 3. `*-1\r\n` parses as an empty array
+## 3. RESP2's null array is unsupported
 
 **Status** open · **Area** protocol
 
 RESP2's null array is `*-1\r\n` and is semantically distinct from the empty array `*0\r\n`.
-There is no `NullArray` constructor, and the parser now silently conflates the two.
+There is no `NullArray` constructor, so the parser rejects it.
 
 **Observed**
 
 ```
-fromBytes "*-1\r\n" = Just (Array [])
+fromBytes "*-1\r\n" = Nothing
 fromBytes "*0\r\n"  = Just (Array [])
 ```
 
-**Why** `pArray`'s `pLength` uses `pSignedDecimal`, so `-1` parses, and `count (-1)` returns
-`pure []` rather than failing.
+Rejecting is the right *interim* behaviour — better than conflating it with the empty array —
+but it means a reply real Redis can send is one we cannot read.
 
-**Regression, and how it got in.** Before the sign handling was unified, `pLength` used
-`L.decimal`, which failed on the `-` and made this input `Nothing`. The unification was
-suggested on consistency grounds without checking what `count` does with a negative
-argument — a worse outcome than the inconsistency it removed, since a rejection became a
-silent wrong answer. It also slipped past the new rejection tests, which cover `*x\r\n` but
-not `*-1\r\n`.
+**Impact** None today: nothing in this codebase parses replies, only requests, and a client
+never sends a null array. It becomes real for anything that reads Redis output — the
+differential test harness, or a replica reading from a master. Redis sends `*-1\r\n` for an
+aborted `EXEC` and for older blocking-command timeouts.
 
-**Fix direction** Either reject a negative array length explicitly, or add `NullArray` and
-branch on the sign the way `pBulkStringOrNull` does. Redis sends `*-1\r\n` for an aborted
-`EXEC` and for older blocking-command timeouts, so the constructor will eventually be needed.
-Whichever is chosen, add `*-1\r\n` to the spec.
+**Why `pArray` parses its length unsigned, deliberately.** `pInteger` and
+`pBulkStringOrNull` use `pSignedDecimal`; `pArray` uses `L.decimal`. That asymmetry looks
+like an oversight and is load-bearing: `count` returns `pure []` for a negative argument
+instead of failing, so parsing the array length as signed silently turns `*-1\r\n` into
+`Array []`. That regression was introduced once, on consistency grounds, and reverted. It is
+now pinned by a test — `rejects "*-1\r\n"` in `Resp.SerializationSpec` — with a comment at
+both sites. Do not unify the sign handling without adding `NullArray` in the same change.
 
----
+**Fix direction** Add `NullArray` to `Resp` and branch on the sign the way
+`pBulkStringOrNull` does. At that point the length can be parsed signed and the test above
+flips from asserting rejection to asserting `Just NullArray`.
 
 ## 4. `$-2\r\n` parses as `NullBulkString`
 
