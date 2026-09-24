@@ -4,7 +4,7 @@ module Resp.SerializationSpec (spec) where
 
 import qualified Data.ByteString as BS
 
-import Resp (Resp (Array, NullBulkString, RedisInteger, SimpleError, SimpleString), fromBytes)
+import Resp (Resp (Array, NullArray, NullBulkString, RedisInteger, SimpleError, SimpleString), fromBytes)
 import Resp.Data (Resp (BulkString))
 import Resp.Serialization (toBytes)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
@@ -27,6 +27,8 @@ spec = do
         it "serializes a Array" $
             toBytes (Array [SimpleString "Hello", SimpleString "World"])
                 `shouldBe` "*2" <> crlf <> "+Hello" <> crlf <> "+World" <> crlf
+        it "serializes a NullArray" $
+            toBytes NullArray `shouldBe` "*-1" <> crlf
         it "serializes a SimpleError" $
             toBytes (SimpleError "OOPsy daisy") `shouldBe` "-OOPsy daisy" <> crlf
 
@@ -56,6 +58,8 @@ spec = do
             fromBytes "*2\r\n$4\r\nPING\r\n$4\r\nPONG\r\n" `shouldBe` Just (Array [BulkString "PING", BulkString "PONG"])
         it "deserializes an empty Array" $
             fromBytes "*0\r\n" `shouldBe` Just (Array [])
+        it "deserializes a NullArray" $
+            fromBytes ("*-1" <> crlf) `shouldBe` Just NullArray
         it "deserializes a nested Array" $
             fromBytes "*2\r\n*1\r\n:1\r\n+ok\r\n" `shouldBe` Just (Array [Array [RedisInteger 1], SimpleString "ok"])
         it "deserializes a SimpleError" $
@@ -99,8 +103,6 @@ spec = do
                 rejects ("$abc" <> crlf)
             it "a non-numeric array length" $
                 rejects ("*x" <> crlf)
-            it "a negative array length" $
-                rejects ("*-1" <> crlf)
             it "a bulk string longer than its declared length" $
                 rejects ("$2" <> crlf <> "hello" <> crlf)
   where

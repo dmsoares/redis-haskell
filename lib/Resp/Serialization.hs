@@ -5,11 +5,12 @@ module Resp.Serialization (toBytes, fromBytes) where
 
 import Resp.Data (Resp (..))
 
+import Control.Applicative (asum)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
 import Data.Void
 import Text.Megaparsec
-import Text.Megaparsec.Byte (char)
+import Text.Megaparsec.Byte (string')
 import qualified Text.Megaparsec.Byte.Lexer as L
 
 toBytes :: Resp -> BS.ByteString
@@ -18,6 +19,7 @@ toBytes (SimpleString str) = "+" <> str <> crlf
 toBytes (BulkString str) = "$" <> Char8.pack (show $ BS.length str) <> crlf <> str <> crlf
 toBytes NullBulkString = "$" <> "-1" <> crlf
 toBytes (Array elems) = "*" <> Char8.pack (show $ length elems) <> crlf <> BS.concat (fmap toBytes elems)
+toBytes NullArray = "*-1" <> crlf
 toBytes (SimpleError str) = "-" <> str <> crlf
 
 crlf :: BS.ByteString
@@ -30,65 +32,75 @@ fromBytes bytes = either (const Nothing) Just (runParser pRedisValue "" bytes)
 
 pRedisValue :: Parser Resp
 pRedisValue =
-    pInteger
-        <|> pBulkStringOrNull
-        <|> pArray
-        <|> pSimpleString
-        <|> pSimpleError
+    -- order matters!
+    asum
+        [ pInteger
+        , pNullBulkString
+        , pBulkString
+        , pNullArray
+        , pArray
+        , pSimpleString
+        , pSimpleError
+        ]
 
 pCRLF :: Parser ()
 pCRLF = do
-    _ <- char 13
-    _ <- char 10
+    _ <- string' crlf
     pure ()
 
 pSignedDecimal :: Parser Int
 pSignedDecimal = L.signed (pure ()) L.decimal
 
+pLength :: Parser Int
+pLength = do
+    n <- L.decimal
+    pCRLF
+    pure n
+
 pInteger :: Parser Resp
 pInteger = do
-    _ <- char 58
+    _ <- string' ":"
     n <- pSignedDecimal
     pCRLF
     pure $ RedisInteger n
 
-pBulkStringOrNull :: Parser Resp
-pBulkStringOrNull = do
-    len <- pBulkStringLength
-    if len < 0 then pure NullBulkString else pBulkString len
-  where
-    pBulkStringLength = do
-        _ <- char 36
-        n <- pSignedDecimal
-        pCRLF
-        pure n
-    pBulkString len = do
-        body <- takeP (Just "bulk string body") len
-        pCRLF
-        pure $ BulkString body
+pNullBulkString :: Parser Resp
+pNullBulkString = do
+    _ <- string' "$-1"
+    pCRLF
+    pure $ NullBulkString
+
+pBulkString :: Parser Resp
+pBulkString = do
+    _ <- string' "$"
+    len <- pLength
+    body <- takeP (Just "bulk string body") len
+    pCRLF
+    pure $ BulkString body
+
+pNullArray :: Parser Resp
+pNullArray = do
+    _ <- string' "*-1"
+    pCRLF
+    pure $ NullArray
 
 pArray :: Parser Resp
 pArray = do
+    _ <- string' "*"
     len <- pLength
     elems <- count len pRedisValue
     pure $ Array elems
-  where
-    pLength = do
-        _ <- char 42
-        n <- L.decimal
-        pCRLF
-        pure n
 
 pSimpleString :: Parser Resp
 pSimpleString = do
-    _ <- char 43
+    _ <- string' "+"
     str <- takeWhileP Nothing (/= 13)
     pCRLF
     pure $ SimpleString str
 
 pSimpleError :: Parser Resp
 pSimpleError = do
-    _ <- char 45
+    _ <- string' "-"
     str <- takeWhileP Nothing (/= 13)
     pCRLF
     pure $ SimpleError str

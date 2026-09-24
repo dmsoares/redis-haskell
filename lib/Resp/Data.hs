@@ -11,6 +11,7 @@ class ToResp a where
 data Resp
     = RedisInteger Int
     | Array [Resp]
+    | NullArray
     | BulkString BS.ByteString
     | SimpleString BS.ByteString
     | NullBulkString
