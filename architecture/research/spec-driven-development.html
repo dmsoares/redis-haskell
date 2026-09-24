@@ -1,0 +1,874 @@
+<title>The Specification Ladder</title>
+<style>
+  :root {
+    --ground:      #F4F5F3;
+    --surface:     #FCFCFB;
+    --surface-alt: #EDEFEC;
+    --ink:         #15191C;
+    --muted:       #5C6670;
+    --faint:       #8A939A;
+    --rule:        #D6DAD6;
+    --rule-soft:   #E4E7E3;
+    --accent:      #1D4E6B;
+    --accent-mid:  #3E7391;
+    --accent-soft: #E2ECF1;
+    --ochre:       #8A6A1F;
+    --ochre-soft:  #F3EDDC;
+    --verdigris:   #2E6A52;
+    --verdigris-soft:#E2EDE7;
+
+    --r0: #C3D2DA; --r1: #AAC2CE; --r2: #8FB1C2; --r3: #74A0B5;
+    --r4: #5A8CA4; --r5: #427791; --r6: #2C617A; --r7: #1D4E6B;
+
+    --serif: Charter, "Bitstream Charter", "Sitka Text", "Source Serif 4", Cambria, Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", "IBM Plex Mono", "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+
+    --col: 68ch;
+    --wide: 1020px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #14171A;
+      --surface:     #1A1E22;
+      --surface-alt: #21262B;
+      --ink:         #E3E7E5;
+      --muted:       #9AA4AB;
+      --faint:       #737D85;
+      --rule:        #2C3238;
+      --rule-soft:   #24292E;
+      --accent:      #79B8D6;
+      --accent-mid:  #5B99B8;
+      --accent-soft: #1B2B35;
+      --ochre:       #CBA654;
+      --ochre-soft:  #2A2418;
+      --verdigris:   #6BB392;
+      --verdigris-soft:#182720;
+
+      --r0: #2A3D48; --r1: #324B58; --r2: #3B5A6A; --r3: #46697C;
+      --r4: #52798E; --r5: #5E89A0; --r6: #6BA0BC; --r7: #79B8D6;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #14171A;
+    --surface:     #1A1E22;
+    --surface-alt: #21262B;
+    --ink:         #E3E7E5;
+    --muted:       #9AA4AB;
+    --faint:       #737D85;
+    --rule:        #2C3238;
+    --rule-soft:   #24292E;
+    --accent:      #79B8D6;
+    --accent-mid:  #5B99B8;
+    --accent-soft: #1B2B35;
+    --ochre:       #CBA654;
+    --ochre-soft:  #2A2418;
+    --verdigris:   #6BB392;
+    --verdigris-soft:#182720;
+
+    --r0: #2A3D48; --r1: #324B58; --r2: #3B5A6A; --r3: #46697C;
+    --r4: #52798E; --r5: #5E89A0; --r6: #6BA0BC; --r7: #79B8D6;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 24px 140px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: var(--wide); margin: 0 auto; }
+  .col  { max-width: var(--col); }
+
+  /* ---------- masthead ---------- */
+  header.masthead {
+    border-bottom: 1px solid var(--ink);
+    padding: 72px 0 26px;
+    margin-bottom: 8px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 22px;
+  }
+  h1 {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(30px, 5vw, 46px);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 20px;
+  }
+  .standfirst {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--muted);
+    max-width: 60ch;
+    margin: 0;
+  }
+  .colophon {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 28px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: var(--faint);
+    padding: 14px 0 0;
+  }
+  .colophon span { white-space: nowrap; }
+
+  /* ---------- contents ---------- */
+  nav.toc {
+    border-bottom: 1px solid var(--rule);
+    padding: 26px 0 30px;
+    margin-bottom: 56px;
+  }
+  nav.toc h2 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    margin: 0 0 16px;
+  }
+  nav.toc ol {
+    list-style: none;
+    margin: 0; padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 6px 40px;
+    counter-reset: toc -1;
+  }
+  nav.toc li { counter-increment: toc; display: flex; gap: 14px; align-items: baseline; }
+  nav.toc li::before {
+    content: counter(toc);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    min-width: 1.4em;
+  }
+  nav.toc a { color: var(--ink); text-decoration: none; border-bottom: 1px solid transparent; font-size: 15.5px; }
+  nav.toc a:hover { border-bottom-color: var(--accent); color: var(--accent); }
+
+  /* ---------- sections ---------- */
+  section { margin-bottom: 76px; scroll-margin-top: 24px; }
+
+  .sec-head {
+    display: grid;
+    grid-template-columns: 3.2rem 1fr;
+    gap: 0 12px;
+    align-items: baseline;
+    border-top: 1px solid var(--ink);
+    padding-top: 14px;
+    margin-bottom: 32px;
+  }
+  .sec-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    padding-top: 6px;
+  }
+  .sec-head h2 {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(21px, 2.7vw, 27px);
+    line-height: 1.22;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  h3 {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: -0.005em;
+    line-height: 1.35;
+    text-wrap: balance;
+    margin: 44px 0 14px;
+    color: var(--ink);
+  }
+  h4 {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 34px 0 12px;
+  }
+
+  p { margin: 0 0 18px; }
+  p.lede { font-size: 18.5px; color: var(--ink); }
+
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+  a:hover { border-bottom-color: var(--accent); }
+  a:focus-visible, nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 1px; }
+
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.855em;
+    background: var(--surface-alt);
+    padding: 0.12em 0.36em;
+    border-radius: 2px;
+  }
+
+  pre {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 2px solid var(--accent-mid);
+    padding: 16px 18px;
+    overflow-x: auto;
+    margin: 0 0 22px;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  ul, ol { margin: 0 0 20px; padding-left: 1.3em; }
+  li { margin-bottom: 9px; }
+  li::marker { color: var(--faint); }
+
+  blockquote {
+    margin: 0 0 22px;
+    padding: 2px 0 2px 20px;
+    border-left: 2px solid var(--accent);
+    font-style: italic;
+    color: var(--ink);
+  }
+  blockquote p:last-child { margin-bottom: 0; }
+
+  /* ---------- tables ---------- */
+  .tablewrap {
+    overflow-x: auto;
+    margin: 0 0 26px;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--rule);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  th {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 11px 16px 11px 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+  td {
+    padding: 11px 16px 11px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+    line-height: 1.48;
+  }
+  tr:last-child td { border-bottom: none; }
+  td code, th code { font-size: 0.9em; }
+  td.num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--surface);
+    text-align: center;
+    width: 2.4em;
+    padding-right: 0;
+  }
+  td.num span {
+    display: inline-block;
+    width: 1.9em; height: 1.9em;
+    line-height: 1.9em;
+    border-radius: 50%;
+    font-weight: 600;
+  }
+  .rung0 span { background: var(--r0); color: var(--ink); }
+  .rung1 span { background: var(--r1); color: var(--ink); }
+  .rung2 span { background: var(--r2); color: var(--ink); }
+  .rung3 span { background: var(--r3); color: var(--ground); }
+  .rung4 span { background: var(--r4); color: var(--ground); }
+  .rung5 span { background: var(--r5); color: var(--ground); }
+  .rung6 span { background: var(--r6); color: var(--ground); }
+  .rung7 span { background: var(--r7); color: var(--ground); }
+  td.rung-name { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+
+  /* ---------- callouts ---------- */
+  .note {
+    border-top: 1px solid var(--accent);
+    border-bottom: 1px solid var(--rule);
+    background: var(--accent-soft);
+    padding: 18px 20px 4px;
+    margin: 0 0 26px;
+  }
+  .note > .label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 10px;
+  }
+  .note.caution { border-top-color: var(--ochre); background: var(--ochre-soft); }
+  .note.caution > .label { color: var(--ochre); }
+  .note.good { border-top-color: var(--verdigris); background: var(--verdigris-soft); }
+  .note.good > .label { color: var(--verdigris); }
+  .note p:last-child { margin-bottom: 16px; }
+
+  .rung-block {
+    border-top: 1px solid var(--rule);
+    padding-top: 22px;
+    margin-top: 40px;
+  }
+  .rung-tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 8px;
+  }
+  .rung-block h3 { margin-top: 0; }
+
+  .park { color: var(--muted); }
+  .yes { color: var(--verdigris); font-family: var(--mono); font-size: 12px; }
+  .no  { color: var(--ochre); font-family: var(--mono); font-size: 12px; }
+
+  /* ---------- reading list ---------- */
+  .reading { counter-reset: ref; }
+  .reading .group { margin-bottom: 34px; }
+  .reading ol { list-style: none; padding: 0; margin: 0; }
+  .reading li {
+    counter-increment: ref;
+    display: grid;
+    grid-template-columns: 2.6rem 1fr;
+    gap: 0 12px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    margin: 0;
+  }
+  .reading li::before {
+    content: counter(ref);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--faint);
+    padding-top: 4px;
+  }
+  .reading .ref-title { display: block; margin-bottom: 3px; }
+  .reading .ref-note { display: block; font-size: 14.5px; color: var(--muted); line-height: 1.45; }
+
+  /* ---------- closing ---------- */
+  .compress { counter-reset: cm; list-style: none; padding: 0; margin: 0; }
+  .compress li {
+    counter-increment: cm;
+    display: grid;
+    grid-template-columns: 2.6rem 1fr;
+    gap: 0 12px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--rule);
+    margin: 0;
+    font-size: 17.5px;
+  }
+  .compress li::before {
+    content: counter(cm);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    padding-top: 6px;
+  }
+
+  footer.end {
+    border-top: 1px solid var(--ink);
+    margin-top: 72px;
+    padding-top: 18px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: var(--faint);
+  }
+
+  @media (max-width: 620px) {
+    body { font-size: 16px; padding: 0 18px 90px; }
+    .sec-head { grid-template-columns: 1fr; }
+    .sec-num { padding-top: 0; margin-bottom: 4px; }
+    .reading li, .compress li { grid-template-columns: 1.9rem 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Research notes · codecrafters-redis-haskell</p>
+  <h1>The Specification Ladder</h1>
+  <p class="standfirst">Where spec-driven development actually works, what kinds of specification exist, what the evidence says about handing implementation to a machine — and which rungs are worth climbing for this Redis.</p>
+  <div class="colophon">
+    <span>2026-09-20</span>
+    <span>Written against <code>c1e2b84</code></span>
+    <span>GHC 9.8.4 · lts-23.18</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#s0">The thing to know first</a></li>
+    <li><a href="#s1">A ladder of specs</a></li>
+    <li><a href="#s2">What the best teams do</a></li>
+    <li><a href="#s3">Gen AI and specs: the evidence</a></li>
+    <li><a href="#s4">Applied to this Redis</a></li>
+    <li><a href="#s5">What's in your toolchain</a></li>
+    <li><a href="#s6">Reading list</a></li>
+    <li><a href="#s7">Compressed to five sentences</a></li>
+  </ol>
+</nav>
+
+<!-- ===================== 0 ===================== -->
+<section id="s0">
+  <div class="sec-head"><div class="sec-num">00</div><h2>The thing to know before anything else</h2></div>
+  <div class="col">
+    <p class="lede"><strong>&ldquo;Spec-driven development&rdquo; names two almost unrelated practices in 2026</strong>, and they are routinely confused because they share a phrase.</p>
+
+    <p><strong>SDD-as-prompt-scaffolding.</strong> Kiro (AWS), Spec Kit (GitHub), Tessl. You write structured <em>natural-language</em> markdown — requirements, design, tasks — and an agent implements it. The &ldquo;spec&rdquo; is a prompt with a directory layout. Thoughtworks put this in the <strong>Assess</strong> ring of Technology Radar Vol.&nbsp;33 (Nov 2025), which is about as tepid as that publication gets.</p>
+
+    <p><strong>SDD-as-correctness-engineering.</strong> AWS, TigerBeetle, FoundationDB, Quviq, Jepsen. The spec is an <em>artifact a machine can check the implementation against</em>: a model, an invariant, a refinement relation, a reply schema. The spec has a truth value.</p>
+
+    <p>You lean formal. That&rsquo;s the right instinct, and it means the first family is mostly noise for you. It&rsquo;s still worth knowing why it disappoints, because the failure is instructive. Birgitta B&ouml;ckeler&rsquo;s evaluation of all three tools found the same three problems across them:</p>
+
+    <ul>
+      <li><strong>Review burden moved, not reduced.</strong> You stop reviewing code and start reviewing markdown — and there is <em>more</em> markdown than there was code. Her line: she&rsquo;d rather review the code.</li>
+      <li><strong>False sense of control.</strong> Constitution files, detailed steering docs and large context windows did not make agents comply. They ignored instructions or overapplied them.</li>
+      <li><strong>No scaling.</strong> Kiro expanded a one-line bug fix into 16 acceptance criteria. Spec Kit generated so many files she estimated plain agentic coding would have been faster.</li>
+    </ul>
+
+    <p>And the historical rhyme: &ldquo;spec-as-source&rdquo; is <strong>model-driven development</strong> with the serial numbers filed off. MDD failed on rigidity; LLMs remove some rigidity but add non-determinism. The pessimistic reading — that you get <em>both</em> inflexibility and non-determinism — is the one to hold until someone demonstrates otherwise. Tessl&rsquo;s regeneration engine has been observed producing different code from identical specs.</p>
+
+    <div class="note">
+      <span class="label">The test</span>
+      <p>The distinguishing question to ask of any &ldquo;spec&rdquo; is simply: <strong>can something other than a human tell me this spec is violated?</strong> If no, it&rsquo;s documentation. Useful, but not a spec.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 1 ===================== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">01</div><h2>A ladder of specs</h2></div>
+  <div class="col">
+    <p>Formality is a dial, not a switch. Each rung costs more and buys a different <em>kind</em> of confidence. Nobody serious picks one rung; they pick a rung per question.</p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th></th><th>Rung</th><th>The spec is&hellip;</th><th>Checked by</th><th>Catches</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="num rung0"><span>0</span></td><td class="rung-name">Examples</td><td>a finite table of input&nbsp;&rarr;&nbsp;output</td><td>running them</td><td>the cases you thought of</td></tr>
+        <tr><td class="num rung1"><span>1</span></td><td class="rung-name">Interface schema</td><td>a grammar + a reply schema</td><td>validator</td><td>shape / arity / protocol drift</td></tr>
+        <tr><td class="num rung2"><span>2</span></td><td class="rung-name">Properties</td><td>a universally-quantified claim</td><td>random search + shrinking</td><td>the cases you didn&rsquo;t think of</td></tr>
+        <tr><td class="num rung3"><span>3</span></td><td class="rung-name">Model / lockstep</td><td>a pure reference implementation</td><td>sequence-generating PBT</td><td>state-dependent bugs</td></tr>
+        <tr><td class="num rung4"><span>4</span></td><td class="rung-name">Linearizability</td><td>&ldquo;some sequential order explains this&rdquo;</td><td>parallel PBT, Knossos, Elle</td><td>races</td></tr>
+        <tr><td class="num rung5"><span>5</span></td><td class="rung-name">Simulation (DST)</td><td>invariants + injected faults + controlled time</td><td>deterministic replay</td><td>emergent, rare, timing bugs</td></tr>
+        <tr><td class="num rung6"><span>6</span></td><td class="rung-name">Design model</td><td>a state machine over an abstract design</td><td>model checker (TLC, P, Apalache)</td><td>protocol design errors</td></tr>
+        <tr><td class="num rung7"><span>7</span></td><td class="rung-name">Proof</td><td>a theorem about the code</td><td>SMT / proof assistant</td><td>everything, at a price</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p><strong>Rung 0 is a spec too</strong> — by enumeration. Your <code>CLAUDE.md</code> already says &ldquo;tests come from examples, not implementation&rdquo;, and &ldquo;if you can&rsquo;t write examples, you don&rsquo;t understand the problem&rdquo;. That&rsquo;s rung 0 done deliberately. Rung 2 is the same discipline with the quantifier moved outward: instead of <em>this</em> input, <em>every</em> input.</p>
+
+    <p><strong>In Haskell you are already standing on rung 7 for a slice of the problem.</strong> Types are machine-checked specifications. <code>liveValue :: UTCTime -&gt; RedisRecord -&gt; Maybe RedisDataType</code> is a proof obligation that the function cannot consult a clock, cannot touch the store, and cannot fail in any way other than returning <code>Nothing</code>. That&rsquo;s not a metaphor — it&rsquo;s what a refinement type buys, at a weaker strength and zero marginal cost. Your 75%-pure measurement is, read this way, a measurement of <em>how much of the system is already specified</em>.</p>
+  </div>
+
+  <!-- rung 1 -->
+  <div class="rung-block col">
+    <p class="rung-tag">Rung 1</p>
+    <h3>Machine-readable interface specs</h3>
+    <p>The one most people skip, and in your case the highest value-per-hour on the whole ladder, because <strong>Redis ships a formal spec of itself</strong>.</p>
+    <p><code>redis/redis:src/commands/*.json</code> is a machine-readable specification of every command: arity, flags, key specs, an <em>argument grammar</em>, and — since the effort tracked in <a href="https://github.com/redis/redis/issues/9845">redis#9845</a> — a <code>reply_schema</code> written in JSON Schema. <code>get.json</code>, in full:</p>
+<pre><code>{ "GET": {
+    "arity": 2,
+    "command_flags": ["READONLY", "FAST"],
+    "reply_schema": {
+      "oneOf": [
+        { "description": "The value of the key.", "type": "string" },
+        { "description": "Key does not exist.",   "type": "null" } ] },
+    "arguments": [ { "name": "key", "type": "key", "key_spec_index": 0 } ] } }</code></pre>
+    <p><code>set.json</code> gives you the whole option grammar as structured data — <code>condition</code> is a <code>oneof</code> over NX/XX/IFEQ/&hellip;, <code>expiration</code> is a <code>oneof</code> over EX/PX/EXAT/PXAT/KEEPTTL — plus:</p>
+<pre><code>"reply_schema": { "anyOf": [
+  { "description": "`GET` not given: Operation was aborted…", "type": "null" },
+  { "description": "`GET` not given: The key was set.", "const": "OK" },
+  { "description": "`GET` given: The key didn't exist before the `SET`", "type": "null" },
+  { "description": "`GET` given: The previous value of the key", "type": "string" } ] }</code></pre>
+    <p>Three things fall out of this for free:</p>
+    <ol>
+      <li><strong><code>arity</code> is a property.</strong> <code>arity: -3</code> means &ldquo;at least 3 tokens, variadic&rdquo;. Every command with fewer tokens must be an error. One property covering every command at once, driven by data rather than by hand-written cases.</li>
+      <li><strong><code>arguments</code> is a generator.</strong> It&rsquo;s a grammar. A generator derived from it produces <em>syntactically valid</em> command sequences by construction — and, perturbed, <em>interestingly invalid</em> ones.</li>
+      <li><strong><code>reply_schema</code> is an oracle.</strong> Map RESP2&nbsp;&rarr;&nbsp;JSON (bulk string&nbsp;&rarr;&nbsp;string, null bulk&nbsp;&rarr;&nbsp;null, simple string <code>OK</code>&nbsp;&rarr;&nbsp;<code>"OK"</code>), then validate every reply against the schema for the command that produced it. A genuine conformance harness that generalizes to every command you add later.</li>
+    </ol>
+    <div class="note caution">
+      <span class="label">A divergence this would find immediately</span>
+      <p><code>expiration</code> being a <code>oneof</code> means <code>SET k v EX 1 PX 1000</code> is a <em>grammar violation</em> — real Redis answers <code>ERR syntax error</code>. You currently answer <code>ERR conflicting expiry options</code>. I have not verified this against a live server (no <code>redis-server</code> on this machine), but if it holds it is exactly the class of divergence this rung exists to catch, and you&rsquo;d never find it by reading your own code.</p>
+    </div>
+    <p>This is the cheapest <em>formal</em> spec available to you, and it was written by the people who define the thing you are cloning.</p>
+  </div>
+
+  <!-- rung 2 -->
+  <div class="rung-block col">
+    <p class="rung-tag">Rung 2</p>
+    <h3>Properties over pure functions</h3>
+    <p>The canonical text is <strong>John Hughes, &ldquo;How to Specify It! A Guide to Writing Properties of Pure Functions&rdquo; (2019)</strong>. If you read one thing from this document, read that. It is short, it is in Haskell/QuickCheck, and it is built around a single worked example with eight deliberately buggy variants, so you can <em>measure</em> which properties find which bugs.</p>
+    <p>Its central contribution is a taxonomy — five ways to write a property when you&rsquo;re staring at a function and can&rsquo;t think of one:</p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Class</th><th>Shape</th><th>For your RESP parser</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Postcondition</strong></td><td>after <code>f x</code>, this holds</td><td>a parsed frame&rsquo;s declared length equals its body length</td></tr>
+        <tr><td><strong>Invariant</strong></td><td>this holds of every reachable value</td><td>every <code>Resp</code> your parser emits is well-formed</td></tr>
+        <tr><td><strong>Metamorphic</strong></td><td>relating <code>f x</code> to <code>f (g x)</code></td><td>parsing <code>a &lt;&gt; b</code> = parsing <code>a</code> then parsing <code>b</code></td></tr>
+        <tr><td><strong>Inductive</strong></td><td><code>f</code> on a constructor, from <code>f</code> on its parts</td><td><code>toBytes (Array n xs)</code> from <code>toBytes</code> of each <code>x</code></td></tr>
+        <tr><td><strong>Model-based</strong></td><td><code>f</code> agrees with a simpler reference</td><td>your server agrees with <code>redis-server</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>The reason this taxonomy matters more than it looks: the hard part of PBT is never the tooling, it&rsquo;s <strong>not being able to think of a property</strong>. The taxonomy is a set of prompts for that specific block. Hughes also reports the cost/benefit of each class, which is unusual and useful — metamorphic properties are the cheapest to write and among the best at finding bugs; model-based are the most expensive and the most complete.</p>
+
+    <div class="note">
+      <span class="label">Where most first PBT suites are secretly worthless</span>
+      <p><strong>The generator is part of the specification.</strong> Your <code>Resp</code> type admits <code>BulkString 5 "ab"</code> — a value the parser can never produce and the serializer must never see. Writing <code>Arbitrary Resp</code> forces you to state that invariant explicitly, in code, for the first time. Write the generator carelessly and you&rsquo;ll test garbage; constrain it too tightly and the property becomes vacuous. That&rsquo;s the same &ldquo;data definitions first&rdquo; move from your <code>CLAUDE.md</code>, arriving from a different direction.</p>
+    </div>
+  </div>
+
+  <!-- rung 3 -->
+  <div class="rung-block col">
+    <p class="rung-tag">Rung 3</p>
+    <h3>Model-based / lockstep testing</h3>
+    <p>In one sentence: <em>generate a random sequence of API calls, run it against both the real system and a pure model, and assert the observable responses agree.</em></p>
+    <p>The model is the spec. For a Redis store the model is roughly</p>
+<pre><code>type Model = Map ByteString (RedisDataType, Maybe UTCTime)</code></pre>
+    <p>&hellip;which is small enough to be obviously correct, which is the whole point. You are not testing &ldquo;does it work&rdquo;, you are testing &ldquo;does the complicated thing agree with the simple thing&rdquo;. Well-Typed&rsquo;s framing calls the second half <strong>observability</strong>: you compare responses <em>up to what a client can actually see</em>, which is what lets the real system have an STM map and a socket while the model has neither.</p>
+    <p>Lineage matters here because the open-source options are uneven. Hughes and Arts commercialised the mature version at Quviq in 2006 (Erlang, closed-source). Stevan Andjelkovic&rsquo;s survey <em>&ldquo;The sad state of property-based testing libraries&rdquo;</em> counts 57+ reimplementations across languages and finds only <strong>four</strong> that do stateful <em>and</em> parallel testing — the feature that catches races. Most stopped at stateful. His blunt claim: the Quviq papers describe state-of-the-art techniques that are &ldquo;almost impossible&rdquo; to reproduce without a license, and the closed-source model may have slowed the field rather than funded it.</p>
+    <div class="note good">
+      <span class="label">Relevant to you</span>
+      <p>One of those four, <code>quickcheck-state-machine</code>, is <strong>already in your LTS</strong>. See §5.</p>
+    </div>
+  </div>
+
+  <!-- rung 4 -->
+  <div class="rung-block col">
+    <p class="rung-tag">Rung 4</p>
+    <h3>Linearizability and race testing</h3>
+    <p>Parallel PBT: run the generated command sequence concurrently across threads, collect the results, then ask whether <em>any</em> sequential interleaving explains what you observed. If none does, you have a race, and the tool hands you the counterexample.</p>
+    <p>Jepsen is the reference implementation at distributed-systems scale. It has two checkers: <strong>Knossos</strong> (linearizability, exponential, a few hundred ops per history) and <strong>Elle</strong> (transactional isolation via cycle detection, <em>linear</em> time, hundreds of thousands of ops, seconds-to-minutes instead of &ldquo;seconds to millennia&rdquo;). The Redis-Raft analysis is worth reading purely as a model of how to state what a system promises before testing whether it keeps the promise.</p>
+    <p>The Haskell-native versions are <strong>dejafu</strong> (systematic concurrency testing — explores the schedule space rather than hoping, via typeclass-abstracted primitives, with first-class STM support) and <strong>io-sim</strong> (Well-Typed/IOG/Quviq — a pure <code>IO</code> simulator where STM, thread scheduling and the passage of <em>time</em> behave as in production but deterministically, which makes timeout-sensitive properties testable at all).</p>
+  </div>
+
+  <!-- rung 5 -->
+  <div class="rung-block col">
+    <p class="rung-tag">Rung 5</p>
+    <h3>Deterministic simulation testing</h3>
+    <p>The FoundationDB idea, now carried by TigerBeetle, Antithesis, WarpStream, Polar Signals. Make the entire system deterministic — single-threaded control plane, no ambient clock, no ambient randomness, all I/O through an injectable interface — then run it inside a simulator that controls time and injects faults (partitions, disk corruption, crashes, clock skew). Because it&rsquo;s deterministic, any failure replays exactly from its seed.</p>
+    <p>The scale it reaches is the argument for it: TigerBeetle&rsquo;s largest simulation cluster runs on 1,000 cores continuously and accumulates <strong>two millennia of simulated runtime per day</strong>.</p>
+    <p>Their August 2026 post on <em>protocol-aware</em> DST adds the refinement that matters most for someone building a small system: don&rsquo;t only assert invariants at the API boundary. Assert them <strong>at every layer</strong> — storage, consensus, application. Black-box DST and Jepsen see what a client sees; protocol-aware DST sees inside. Their own transferable lesson for smaller systems: once time and I/O are controllable, a &ldquo;what happens if&hellip;&rdquo; scenario becomes 30&ndash;40 lines running in milliseconds.</p>
+    <p>The entry fee is a single architectural commitment: <strong>the system must not reach for ambient effects.</strong> No <code>getCurrentTime</code> in the middle of a function, no un-injected randomness. That is a dependency-inversion discipline you have already applied to the store — and, as §4 notes, have not yet applied to the clock.</p>
+  </div>
+
+  <!-- rung 6 -->
+  <div class="rung-block col">
+    <p class="rung-tag">Rung 6</p>
+    <h3>Design-level model checking</h3>
+    <p>TLA+ (and PlusCal), P, Quint, Alloy. You model the <em>design</em> — an abstract state machine — and a model checker exhaustively explores its reachable states looking for invariant violations and liveness failures.</p>
+    <p>AWS is the canonical industrial data point, and their published account is unusually candid about cost. Since 2011 they&rsquo;ve used TLA+ on critical systems. But when they tried to spread it beyond the initial teams, <strong>engineers bounced off TLA+</strong> because it looks like mathematics rather than a programming language. So AWS built and adopted <strong>P</strong>, which model-checks the same class of designs in a syntax programmers recognise; the Aurora commit protocol was modelled in both P and TLA+.</p>
+    <p><strong>Quint</strong> (Informal Systems) is the other answer to the same complaint: TLA&rsquo;s logic, a modern surface syntax, real type checking, an LSP and a VS Code extension. If you ever want to learn this rung, Quint is the gentler door.</p>
+    <p>The structural limitation — true of all of rung 6 — is that <strong>the model is not the code</strong>. Nothing mechanically ties a TLA+ spec to your Haskell. You get design confidence, not implementation confidence. AWS closes that gap partly with runtime monitoring: checking the model&rsquo;s invariants against traces from the <em>running</em> production system.</p>
+  </div>
+
+  <!-- rung 7 -->
+  <div class="rung-block col">
+    <p class="rung-tag">Rung 7</p>
+    <h3>Proof</h3>
+    <p>Dafny, Lean, Verus, Kani, Liquid Haskell. You state a theorem about the code and a machine checks it. AWS supports development on Kani, Dafny and Lean, and on the SMT solvers underneath them — which tells you these are viable and also that they require an investment most teams make only for code where being wrong is unacceptable.</p>
+    <p>Liquid Haskell is the Haskell entry: refinement types over SMT, applied to 10,000+ lines of real libraries (<code>containers</code>, <code>bytestring</code>, <code>text</code>, <code>vector-algorithms</code>, <code>xmonad</code>). Genuinely mature. Its sweet spot is <em>value-shaped</em> invariants — indices in range, lists non-empty, lengths agreeing.</p>
+  </div>
+</section>
+
+<!-- ===================== 2 ===================== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">02</div><h2>What the best teams actually do</h2></div>
+  <div class="col">
+    <p>The single most useful survey is <strong>&ldquo;Systems Correctness Practices at AWS: Leveraging Formal and Semi-formal Methods&rdquo;</strong> (ACM Queue 22:6 / CACM, 2025). Read it for the framing more than the specifics.</p>
+    <p>Its central message is not &ldquo;use formal methods&rdquo;. It is that AWS runs a <strong>portfolio</strong>, and that the portfolio is deliberately weighted toward the cheap end:</p>
+    <blockquote><p>traditional formal approaches (theorem proving, deductive verification, model checking) <strong>and</strong> more lightweight semi-formal approaches (property-based testing, fuzzing, and runtime monitoring)</p></blockquote>
+    <p>Four distinct uses, each a different rung: model-checking designs <strong>at design time</strong> (rung 6); <strong>runtime monitoring</strong>, validating in-production behaviour against the model&rsquo;s invariants, which is how they bridge the model-vs-code gap; <strong>simulation</strong> of emergent behaviour (rung 5); and <strong>proof</strong> of the few properties that justify it (rung 7).</p>
+    <p>The pattern across every serious team is the same shape:</p>
+    <ul>
+      <li><strong>AWS</strong> — portfolio, chosen per problem, with a deliberate investment (P) in making the expensive rung <em>approachable</em> rather than in making everyone climb it.</li>
+      <li><strong>TigerBeetle / FoundationDB</strong> — one rung, taken to an extreme, with the architecture bent around it. Determinism is not a testing choice there, it&rsquo;s a design constraint.</li>
+      <li><strong>Quviq (Hughes/Arts)</strong> — model-based PBT applied to other people&rsquo;s production code: AUTOSAR acceptance tests for Volvo Cars, a race condition found at Klarna. The interesting bit is that the <em>model</em> became the deliverable, and it found spec bugs in AUTOSAR itself, not just implementation bugs.</li>
+      <li><strong>Jepsen</strong> — adversarial black-box testing with a checker that can decide the property, and a reporting culture that treats the vendor&rsquo;s own claims as the spec under test.</li>
+    </ul>
+    <p>The common denominator is not a technique. It&rsquo;s that in every case <strong>the spec exists as an artifact separate from the code</strong>, and something mechanical compares them.</p>
+  </div>
+</section>
+
+<!-- ===================== 3 ===================== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">03</div><h2>Gen AI and specs: what the evidence says</h2></div>
+  <div class="col">
+    <h3>The direction of the problem has inverted</h3>
+    <p><strong>&ldquo;The Verification Horizon: No Silver Bullet for Coding Agent Rewards&rdquo;</strong> (2026) makes the argument crisply. The classical assumption is that verifying a solution is easier than producing one. For coding agents that has flipped: generation is cheap, and <em>reliably verifying</em> is now the bottleneck. They frame verification quality along three axes — <strong>scalability, faithfulness, robustness</strong> — and argue you cannot have all three at once. Their conclusion: no <em>fixed</em> reward function stays effective as the generator improves; verification has to co-evolve with it.</p>
+    <p>Read as practical advice: <strong>your spec is not a one-time artifact. It is the thing that has to keep getting stronger.</strong></p>
+
+    <h3>LLMs are surprisingly good at rung 7 — in the right language</h3>
+    <p><strong>&ldquo;A Benchmark for Vericoding&rdquo;</strong> assembled 12,504 formal specifications (3,029 Dafny, 2,334 Verus/Rust, 7,141 Lean) and measured generation of <em>formally verified</em> code from <em>formal</em> specs.</p>
+  </div>
+
+  <div class="tablewrap" style="max-width: var(--col);">
+    <table>
+      <thead><tr><th>Spec language</th><th>Vericoding success</th></tr></thead>
+      <tbody>
+        <tr><td>Dafny</td><td><strong>82%</strong></td></tr>
+        <tr><td>Verus / Rust</td><td>44%</td></tr>
+        <tr><td>Lean</td><td>27%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>And pure Dafny verification went <strong>68% &rarr; 97% in a single year</strong>.</p>
+    <p>The lesson is not &ldquo;use Dafny&rdquo;. It&rsquo;s that the spread tracks <em>how much automation sits under the spec language</em>. Dafny&rsquo;s SMT backend discharges most obligations without the model having to construct a proof; Lean makes it construct one. When you choose a spec language you are choosing how much work is delegated to a solver — and that choice drives whether an AI can help you at all.</p>
+
+    <h3>The failure mode you must design against: vacuity</h3>
+    <div class="note caution">
+      <span class="label">The central safety finding</span>
+      <p>A specification that verifies might still be <strong>vacuous</strong> (true of any implementation) or <strong>non-discriminating</strong> (true even of a deliberately unsafe variant).</p>
+    </div>
+    <p>An LLM asked to make a verifier go green has two moves available: fix the code, or <strong>weaken the spec until it is trivially true</strong>. It can also introduce a contradictory assumption, from which anything follows. The proof assistant accepts these, because they are <em>valid</em>. This is reward hacking against a formal oracle, and it is not hypothetical — it is the headline challenge in the LLM-formal-synthesis literature.</p>
+    <p>The same disease at rung 2: an LLM-written property that reads impressively and quantifies over a generator that produces one value. Green, meaningless.</p>
+
+    <h3>The defence: mutation-based spec validation</h3>
+    <p>From IronSpec and the surrounding work, and the single most transferable idea in this section:</p>
+    <blockquote><p>A specification is only trusted if the correct implementation <strong>passes</strong> <em>and</em> deliberately broken variants <strong>fail</strong>.</p></blockquote>
+    <p>Generate mutants of your implementation — flip <code>&lt;</code> to <code>&lt;=</code>, drop the expiry check, return the wrong branch — and require that your spec <em>rejects</em> them. A spec that accepts a mutant is either vacuous or too weak, and you&rsquo;ve learned that mechanically rather than by inspection.</p>
+    <div class="note">
+      <span class="label">Cheapest possible instance, in your code</span>
+      <p>Your expiry rule is <code>isLive now = maybe True (now &lt;)</code>. Change that <code>&lt;</code> to <code>&lt;=</code> and re-run your suite. If it still passes, your suite does not specify the expiry boundary — which is the classic off-by-one in every TTL implementation ever written.</p>
+    </div>
+
+    <h3>What the evidence says about AI writing properties</h3>
+    <p><strong>PBT-Bench</strong> (2026) benchmarks agents on exactly this: 100 problems across 40 Python libraries, 365 bugs, three difficulty tiers from boundary bugs to stateful protocol violations. The task is explicitly two-part — <em>derive a semantic invariant from the documentation</em>, then <em>construct a generator precise enough that random search finds the violation</em>.</p>
+    <p>Results: bug recall 42&ndash;83% with a Hypothesis-scaffolded prompt, 31&ndash;77% open-ended. Structured scaffolding lifted mid-capability models by 20+ points and sometimes <em>degraded</em> strong ones. The hardest bugs were <strong>model-specific</strong> — different models fail on different problems, with no model closing all the gaps.</p>
+    <p>And the honest bottom line from the adjacent literature: <em>property quality assurance currently depends on prompt design and human filtering; there are no automated guardrails.</em> That is the empirical justification for the arrangement you already proposed for yourself.</p>
+
+    <h3>The arrangement that works</h3>
+    <blockquote><p>The human owns the specification. The machine owns the implementation. The specification is immutable to the machine.</p></blockquote>
+    <p>It works because of an asymmetry. Writing the spec requires deciding <em>what the system should do</em> — irreducibly a human judgement, and the part that produces understanding. Writing the implementation requires satisfying a stated constraint — mechanical, checkable, and safe to delegate precisely <em>because</em> it&rsquo;s checkable. Letting the machine touch both sides destroys the check, because the shortest path to green runs through the spec.</p>
+    <p>Concrete guardrails, in descending order of importance:</p>
+    <ol>
+      <li><strong>The agent cannot edit the spec.</strong> Not a convention — an enforced boundary. Separate directory, and a CI job that fails if spec files changed in a commit that also changed implementation files. This is the whole ballgame; every other guardrail is secondary.</li>
+      <li><strong>Mutation-gate every spec.</strong> New property, new mutants. A property that no mutant defeats is deleted or strengthened.</li>
+      <li><strong>Review the spec diff, not the code diff.</strong> This is the part of B&ouml;ckeler&rsquo;s critique that survives: reviewing generated prose is worse than reviewing code, but reviewing a <em>formal</em> spec is much better than reviewing code, because it&rsquo;s shorter and it has a truth value.</li>
+      <li><strong>Fix the seed, keep the corpus.</strong> Every counterexample found becomes a permanent regression example at rung 0. Shrunk counterexamples are the best documentation a codebase can accumulate.</li>
+      <li><strong>Expect the spec to strengthen over time.</strong> Per the Verification Horizon result, a static spec becomes a weaker and weaker constraint as the generator improves.</li>
+    </ol>
+    <p>There is also a live example of the &ldquo;AI writes the <em>formal</em> spec&rdquo; direction worth watching: the <strong>Quint LLM Kit</strong> ships Claude Code agents that turn English requirements — or existing Rust/Go/TypeScript source, or TLA+ — into Quint specs, then validate them by type-checking, executing, simulating and verifying them with the Quint CLI. Same guardrail as everywhere else: a tool, not a human, decides whether the spec is well-formed. Note that well-formed is <em>not</em> non-vacuous; it catches malformed, not meaningless.</p>
+  </div>
+</section>
+
+<!-- ===================== 4 ===================== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">04</div><h2>Applied to this Redis</h2></div>
+  <div class="col">
+    <p>Ordered by value per hour of your time. Everything here is checked against the code at <code>c1e2b84</code>.</p>
+
+    <h3>First: the clock is the one effect you haven&rsquo;t inverted</h3>
+    <p><code>Redis.Workflows.Set.execute</code> and <code>Redis.Workflows.Get.execute</code> both do</p>
+<pre><code>now &lt;- liftIO getCurrentTime</code></pre>
+    <p>You&rsquo;ve inverted the store beautifully — <code>Env { setKey :: Key -&gt; RedisRecord -&gt; IO () }</code>, the workflow never imports the adapter, the absence of the compile-time edge <em>is</em> the inversion. The clock is the identical problem and hasn&rsquo;t had the identical treatment.</p>
+    <div class="note caution">
+      <span class="label">Consequence</span>
+      <p><strong>No TTL property can be tested deterministically today.</strong> To check that a key expires you&rsquo;d have to actually sleep, which makes the test slow, flaky, and unable to probe the boundary instant at all. Every interesting expiry property — including the <code>&lt;</code> vs <code>&lt;=</code> mutant above — is currently out of reach.</p>
+    </div>
+    <p>Putting the clock in <code>Env</code> unlocks rungs 2, 3 and 5 simultaneously. It is also, exactly, the architectural commitment deterministic simulation testing demands, so you&rsquo;d be paying an entry fee you&rsquo;ll want to have paid anyway. And it makes <code>execute</code> testable without a store <em>or</em> a clock, which is what &ldquo;pure core&rdquo; was supposed to mean. Highest-leverage change available, and about six lines.</p>
+
+    <h4>Then, in order</h4>
+
+    <h3>1 &nbsp;RESP properties (rung 2)</h3>
+    <p>Your parser is pure, total-ish, and the most property-shaped code in the repo. Candidates, in Hughes&rsquo; classes:</p>
+    <ul>
+      <li><strong>Round-trip.</strong> <code>fromBytes (toBytes r) == Just r</code> for well-formed <code>r</code>. The weakest useful property; write it first, then stop trusting it.</li>
+      <li><strong>Concatenation / pipelining.</strong> For <code>rs :: [Resp]</code>, repeatedly parsing <code>mconcat (map toBytes rs)</code> yields exactly <code>rs</code> and an empty remainder. <strong>This property fails on the current code</strong> — <code>runParser</code> doesn&rsquo;t require <code>eof</code>, so <code>fromBytes</code> silently drops trailing frames. You found that bug by hand. This is the property that would have found it for you, and the one to write first as a demonstration to yourself that rung 2 pays.</li>
+      <li><strong>Prefix-closure.</strong> For a well-formed frame <code>b</code> and <em>every</em> proper prefix <code>p</code>, the parser must classify <code>p</code> as <em>incomplete</em> — never malformed, never successful. This is the actual specification of your <code>fullQuery</code> read loop&rsquo;s termination condition, and no example-based test will ever cover it exhaustively.</li>
+      <li><strong>No false incomplete.</strong> Appending arbitrary bytes to a complete frame must not turn success into incomplete. Together with prefix-closure this pins the truncated-vs-malformed discriminator you built on <code>TrivialError _ (Just EndOfInput) _</code>.</li>
+      <li><strong>Totality.</strong> <code>fromBytes</code> on arbitrary <code>ByteString</code> terminates and does not throw. This is your fuzzing.</li>
+      <li><strong>Declared-length agreement.</strong> For every <code>BulkString n s</code> the parser emits, <code>n == length s</code>; likewise <code>Array</code>. An <em>inductive invariant</em> your type does not enforce — and therefore something your generator has to enforce.</li>
+    </ul>
+
+    <h3>2 &nbsp;Fuzzing, the version actually worth doing</h3>
+    <p>Coverage-guided fuzzing of Haskell is possible but expensive: Tweag&rsquo;s approach needs an <strong>unregisterised GHC build</strong> (Cmm&nbsp;&rarr;&nbsp;C, so clang can instrument it) plus C glue for <code>LLVMFuzzerInitialize</code>, and even then GHC&rsquo;s pattern-match optimisations bypass coverage points unless you instrument <code>base</code> too. That is a weekend better spent elsewhere.</p>
+    <p>The pragmatic substitute is <strong>mutation-based generation</strong>, and it is not a poor relation — it&rsquo;s what actually finds parser bugs. Uniform random bytes essentially never survive the first byte of a RESP frame, so a naive fuzzer tests almost nothing. Instead: generate a <em>well-formed</em> frame, then perturb it — flip a byte, truncate at a random offset, corrupt a declared length, drop a CRLF, splice two frames. The truncation mutation <em>is</em> the prefix-closure property; the length-corruption mutation is where a bug reading <code>takeP</code> with an attacker-controlled length would surface. This is &ldquo;structure-aware fuzzing&rdquo; in Google&rsquo;s terminology, and it&rsquo;s just a QuickCheck generator.</p>
+
+    <h3>3 &nbsp;Differential testing against real <code>redis-server</code> (rung 3)</h3>
+    <p>The highest-fidelity oracle available, because the model isn&rsquo;t a simplification — it&rsquo;s the thing you&rsquo;re cloning. Send the same generated command sequence to both servers on different ports, compare byte-for-byte. <code>redis-server</code> isn&rsquo;t installed here; on NixOS <code>nix shell nixpkgs#redis</code> gets you one without touching your system profile. The suspected <code>ERR syntax error</code> divergence from §1 is the kind of thing this finds in its first minute.</p>
+
+    <h3>4 &nbsp;Lockstep model testing (rung 3)</h3>
+<pre><code>type Model = Map ByteString (RedisDataType, Maybe UTCTime)</code></pre>
+    <p>&hellip;plus a logical clock the generated commands can advance. Once the clock is injected, &ldquo;advance time by 5 seconds&rdquo; is just another generated command — and suddenly TTL is exhaustively testable, instantly, with shrinking. Note <code>RedisRecord</code> has no <code>Eq</code> instance yet; you&rsquo;ll want one, or an explicit observability relation, since <code>insertedAt</code> is an implementation detail a client can&rsquo;t see — comparing it would be <em>over</em>-specifying.</p>
+    <p>Properties worth stating here, again by Hughes&rsquo; classes:</p>
+    <ul>
+      <li><strong>Postcondition.</strong> After <code>SET k v</code>, <code>GET k</code> returns <code>v</code> — provided no time has passed beyond the TTL.</li>
+      <li><strong>Invariant.</strong> No key ever returns a value at or after its expiry instant. Pin the boundary explicitly: your <code>isLive now = maybe True (now &lt;)</code> means that <em>at exactly</em> <code>expiresAt</code> the key is dead. State that; don&rsquo;t let it be an accident.</li>
+      <li><strong>Metamorphic — locality.</strong> Operations on distinct keys commute. <code>SET k1 v1; SET k2 v2</code> is observationally equal to <code>SET k2 v2; SET k1 v1</code> for <code>k1 /= k2</code>. The strongest cheap property a key-value store has, and the one that will catch a store implementation bug.</li>
+      <li><strong>Metamorphic — last write wins.</strong> <code>SET k v1; SET k v2</code> &equiv; <code>SET k v2</code>.</li>
+    </ul>
+
+    <h3>5 &nbsp;Rung 1 conformance from <code>src/commands/*.json</code></h3>
+    <p>Covered in §1. Do this once you have more than four commands — it&rsquo;s the thing that keeps paying as the command set grows, and CodeCrafters will grow it fast.</p>
+
+    <h3>What to park, and why</h3>
+    <p class="park">Saying &ldquo;not yet&rdquo; is part of the answer.</p>
+    <ul>
+      <li><strong>Parallel / linearizability testing (rung 4) — park until you have a read-modify-write command.</strong> Your store&rsquo;s operations are single STM transactions over single keys: <code>Map.insert</code> and <code>Map.lookup</code>. Those are trivially linearizable; a race checker will find nothing because there is nothing. It becomes valuable the moment you add <code>INCR</code>, <code>SETNX</code>, <code>SET … GET</code>, <code>MULTI/EXEC</code> or any multi-key command — that&rsquo;s when read-then-write windows appear and STM&rsquo;s composability starts doing real work worth verifying. <code>quickcheck-state-machine</code> does parallel testing and is in your LTS, so the capability is sitting there for free when you need it.</li>
+      <li><strong>TLA+ / Quint / P (rung 6) — park until the replication stage.</strong> A single-node key-value store with lazy TTL has essentially no protocol content to model-check; the reachable state space is &ldquo;the map, and time moves forward&rdquo;. Replication — which the CodeCrafters challenge reaches — is <em>exactly</em> what rung 6 is for: propagation ordering, replica consistency during handoff, what a replica may serve mid-sync. When you get there, write the spec <strong>before</strong> the Haskell. Same for your <strong>active expiry reaper</strong> (already a <code>Proposed</code> component in <code>workspace.dsl</code>) — a background reaper racing lazy expiry against client reads is the first thing in this project worth a state machine.</li>
+      <li><strong>Liquid Haskell (rung 7) — park indefinitely.</strong> Not in LTS 23.18, a heavy dependency, and the mismatch is conceptual: your invariants are about <em>behaviour over time</em> (what a client observes after a sequence of commands), not <em>value shapes</em> (index in range, list non-empty). Refinement types are excellent at the latter. Your types plus rung 3 already cover more of your actual risk. The one small taste, if you want it: <code>BulkString</code>&rsquo;s declared length is precisely a refinement-type-shaped invariant.</li>
+      <li><strong>Jepsen — never, for this project.</strong> It tests distributed systems under fault injection across a cluster. Read the Redis-Raft analysis for how to <em>state</em> a safety property; don&rsquo;t run the tool.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===================== 5 ===================== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">05</div><h2>What&rsquo;s actually available in your toolchain</h2></div>
+  <div class="col">
+    <p>You&rsquo;re on <code>lts-23.18</code> (GHC 9.8.4). Checked against Stackage.</p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Package</th><th>Version</th><th>In LTS</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>QuickCheck</code></td><td>2.14.3</td><td class="yes">yes</td><td>the lingua franca; Hughes&rsquo; paper is written in it</td></tr>
+        <tr><td><code>hedgehog</code></td><td>1.5</td><td class="yes">yes</td><td>integrated shrinking, generators-as-values, very polished</td></tr>
+        <tr><td><code>falsify</code></td><td>0.2.0</td><td class="yes">yes</td><td>internal <em>and</em> integrated shrinking; works across monadic bind</td></tr>
+        <tr><td><code>quickcheck-state-machine</code></td><td>0.10.1</td><td class="yes">yes</td><td><strong>stateful + parallel</strong>; one of only four libraries anywhere that does both</td></tr>
+        <tr><td><code>dejafu</code></td><td>2.4.0.7</td><td class="yes">yes</td><td>systematic concurrency testing, first-class STM</td></tr>
+        <tr><td><code>tasty-quickcheck</code> / <code>hspec</code></td><td>0.11 / 2.11.12</td><td class="yes">yes</td><td>runners</td></tr>
+        <tr><td><code>quickcheck-dynamic</code></td><td>4.0.1</td><td class="no">extra-dep</td><td>dynamic-logic stateful testing (IOG/QuviQ)</td></tr>
+        <tr><td><code>quickcheck-lockstep</code></td><td>0.8.3</td><td class="no">extra-dep</td><td>lockstep layer over <code>quickcheck-dynamic</code></td></tr>
+        <tr><td><code>io-sim</code> / <code>io-classes</code></td><td>1.11.0.0</td><td class="no">extra-dep</td><td>deterministic <code>IO</code>, STM and time</td></tr>
+        <tr><td><code>liquidhaskell</code></td><td>&mdash;</td><td class="no">extra-dep</td><td>refinement types</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <h3>Which to start with</h3>
+    <p><strong>QuickCheck</strong> — and I&rsquo;d hold that recommendation even though falsify and hedgehog shrink better in principle. Three reasons: Hughes&rsquo; paper is in QuickCheck so you can follow it line by line; <code>quickcheck-state-machine</code> builds on it so rung 3 is a continuous path rather than a rewrite; and an <strong>experience report from 2026</strong> evaluating shrinking across QuickCheck, Hedgehog and Falsify on ETNA workloads found QuickCheck&rsquo;s manual structural shrinking <em>usually faster and competitive on counterexample quality</em> — integrated shrinking does not automatically win. The received wisdom on this is out of date.</p>
+    <p>The tradeoff you&rsquo;re accepting is writing <code>shrink</code> by hand. For a recursive type like <code>Resp</code> that&rsquo;s real work, but it&rsquo;s also the kind of work that teaches you what shrinking is doing — which, for a learning project, is the point.</p>
+  </div>
+</section>
+
+<!-- ===================== 6 ===================== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">06</div><h2>Reading list</h2></div>
+  <div class="col reading">
+    <p>Ordered for actually reading, not for completeness.</p>
+
+    <div class="group">
+      <h4>Start here</h4>
+      <ol>
+        <li><span><span class="ref-title">John Hughes, <em>How to Specify It! A Guide to Writing Properties of Pure Functions</em> (2019) — <a href="https://research.chalmers.se/publication/517894/file/517894_Fulltext.pdf">PDF</a> · <a href="https://www.youtube.com/watch?v=zvRAyq5wj38">talk</a></span><span class="ref-note">The five property classes. Short. The single highest-value item on this list.</span></span></li>
+        <li><span><span class="ref-title">John Hughes, <em>Experiences with QuickCheck: Testing the Hard Stuff and Staying Sane</em> (2016) — <a href="https://www.cs.tufts.edu/~nr/cs257/archive/john-hughes/quviq-testing.pdf">PDF</a></span><span class="ref-note">What model-based PBT looks like against real production code (Volvo/AUTOSAR, Klarna).</span></span></li>
+      </ol>
+    </div>
+
+    <div class="group">
+      <h4>The industry picture</h4>
+      <ol start="3">
+        <li><span><span class="ref-title"><em>Systems Correctness Practices at Amazon Web Services</em>, ACM Queue 22:6 / CACM (2025) — <a href="https://queue.acm.org/detail.cfm?id=3712057">Queue</a> · <a href="https://cacm.acm.org/practice/systems-correctness-practices-at-amazon-web-services">CACM</a></span><span class="ref-note">The portfolio argument. The most useful single item here.</span></span></li>
+        <li><span><span class="ref-title">TigerBeetle, <em>Protocol-Aware Deterministic Simulation Testing</em> (Aug 2026) — <a href="https://tigerbeetle.com/blog/2026-08-20-protocol-aware-dst/">post</a></span><span class="ref-note">Assert invariants at every layer, not just the API boundary.</span></span></li>
+        <li><span><span class="ref-title">Phil Eaton, <em>What&rsquo;s the big deal about Deterministic Simulation Testing?</em> — <a href="https://notes.eatonphil.com/2024-08-20-deterministic-simulation-testing.html">post</a></span><span class="ref-note">The gentlest introduction to rung 5.</span></span></li>
+      </ol>
+    </div>
+
+    <div class="group">
+      <h4>Haskell specifics</h4>
+      <ol start="6">
+        <li><span><span class="ref-title">Well-Typed, <em>Lockstep-style testing with quickcheck-dynamic</em> (2022) — <a href="https://well-typed.com/blog/2022/09/lockstep-with-quickcheck-dynamic/">post</a></span><span class="ref-note">Plus Haskell Unfolder #44 for the video version.</span></span></li>
+        <li><span><span class="ref-title">Stevan Andjelkovic, <em>The sad state of property-based testing libraries</em> — <a href="https://stevana.github.io/the_sad_state_of_property-based_testing_libraries.html">post</a></span><span class="ref-note">Why stateful+parallel PBT is rarer than it should be.</span></span></li>
+        <li><span><span class="ref-title">Well-Typed, <em>falsify: Hypothesis-inspired shrinking for Haskell</em> (2023) — <a href="https://well-typed.com/blog/2023/04/falsify/">post</a>; then <em>Evaluating Shrinking</em> (2026) — <a href="https://arxiv.org/abs/2608.09935">arXiv:2608.09935</a></span><span class="ref-note">The case for integrated shrinking, and the empirical counterpoint.</span></span></li>
+        <li><span><span class="ref-title">Tweag, <em>Coverage-guided fuzzing of Haskell programs for cheap</em> (2023) — <a href="https://www.tweag.io/blog/2023-06-15-ghc-libfuzzer/">post</a></span><span class="ref-note">Read to understand why you&rsquo;re not going to do this.</span></span></li>
+      </ol>
+    </div>
+
+    <div class="group">
+      <h4>AI and specs</h4>
+      <ol start="10">
+        <li><span><span class="ref-title"><em>The Verification Horizon: No Silver Bullet for Coding Agent Rewards</em> (2026) — <a href="https://arxiv.org/abs/2606.26300">arXiv:2606.26300</a></span><span class="ref-note">Verification, not generation, is the bottleneck now.</span></span></li>
+        <li><span><span class="ref-title"><em>A Benchmark for Vericoding: Formally Verified Program Synthesis</em> — <a href="https://arxiv.org/abs/2509.22908">arXiv:2509.22908</a></span><span class="ref-note">The Dafny/Verus/Lean numbers, and vacuity as the central threat.</span></span></li>
+        <li><span><span class="ref-title"><em>PBT-Bench: Benchmarking AI Agents on Property-Based Testing</em> — <a href="https://arxiv.org/abs/2605.15229">arXiv:2605.15229</a></span><span class="ref-note">How well models actually write properties.</span></span></li>
+        <li><span><span class="ref-title">Birgitta B&ouml;ckeler (Thoughtworks), <em>Understanding Spec-Driven Development: Kiro, spec-kit, and Tessl</em></span><span class="ref-note">The critique of the other SDD.</span></span></li>
+        <li><span><span class="ref-title">Informal Systems — <a href="https://quint.sh/">Quint</a> and the <a href="https://github.com/informalsystems/quint-llm-kit">Quint LLM Kit</a></span><span class="ref-note">The friendliest door into rung 6, and a working example of AI-written formal specs with tool validation.</span></span></li>
+      </ol>
+    </div>
+
+    <div class="group">
+      <h4>Reference material you&rsquo;ll actually use</h4>
+      <ol start="15">
+        <li><span><span class="ref-title"><a href="https://github.com/redis/redis/tree/unstable/src/commands"><code>redis/redis:src/commands/*.json</code></a> — and <a href="https://github.com/redis/redis/issues/9845">redis#9845</a></span><span class="ref-note">The machine-readable spec, and the rationale for reply schemas.</span></span></li>
+        <li><span><span class="ref-title"><a href="https://github.com/redis/redis-specifications/blob/master/protocol/RESP2.md">RESP2</a> / <a href="https://github.com/redis/redis-specifications/blob/master/protocol/RESP3.md">RESP3</a> specifications</span><span class="ref-note">The protocol itself.</span></span></li>
+        <li><span><span class="ref-title"><a href="https://jepsen.io/analyses/redis-raft-1b3fbf6">Jepsen: Redis-Raft</a></span><span class="ref-note">As a model of how to state what a system promises.</span></span></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 7 ===================== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">07</div><h2>If I had to compress this to five sentences</h2></div>
+  <div class="col">
+    <ol class="compress">
+      <li>The &ldquo;spec-driven development&rdquo; you see in tooling announcements is structured prompting; the spec-driven development that works is an artifact a machine can check the code against — ignore the first, pursue the second.</li>
+      <li>Formality is a ladder, and the best teams stand on several rungs at once, deliberately weighted toward the cheap end.</li>
+      <li>Redis already publishes a formal spec of itself, and it is the cheapest real spec you will ever be handed.</li>
+      <li>The non-negotiable guardrail for AI-assisted implementation is that the machine must not be able to touch the spec, and every spec must be mutation-gated — because the shortest path to green runs through weakening the spec.</li>
+      <li>Your next concrete move is six lines long: put the clock in <code>Env</code>, which unlocks every TTL property at once and pays the entry fee for deterministic simulation later.</li>
+    </ol>
+  </div>
+</section>
+
+<footer class="end">
+  architecture/research/spec-driven-development.md &nbsp;·&nbsp; reviewed at c1e2b84 &nbsp;·&nbsp; 2026-09-20
+</footer>
+
+</div>
