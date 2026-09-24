@@ -19,6 +19,11 @@
             haskell-language-server
             zlib
             pkg-config
+
+            # Reference implementation, for differential testing: run the same
+            # command sequence against redis-server and against ours, compare
+            # replies. Also gives redis-cli for poking at either by hand.
+            redis
           ];
 
           # Stack manages its own GHC/package snapshot per stack.yaml;
