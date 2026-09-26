@@ -33,6 +33,7 @@ fromBytes bytes = either (const Nothing) Just (runParser pRedisValue "" bytes)
 pRedisValue :: Parser Resp
 pRedisValue =
     -- order matters!
+    -- but shouldn't right? I need to come back to this...
     asum
         [ pInteger
         , pNullBulkString

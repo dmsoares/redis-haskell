@@ -11,8 +11,9 @@ without repeating the investigation.
   inferred rather than executed it says so.
 - `Status` is one of `open` (no decision yet), `deferred` (decided to fix later),
   `accepted` (decided this is fine).
-- When an entry is fixed, add the test that pins it and delete the entry. The test is the
-  permanent record; this file is a waiting room.
+- When an entry is fixed, add the test that pins it and replace the entry with a one-line
+  resolution naming that test. Numbers stay stable so cross-references keep working; the
+  test is the permanent record, this file is only the waiting room.
 - Entries that turn into design decisions graduate to `decisions/`.
 
 Last verified against `3603a55` on 2026-09-24. Claims about *real* Redis behaviour were
@@ -24,8 +25,8 @@ on a spare port with `redis-server --port 6390 --save "" --appendonly no` and ta
 |---|-----|------|--------|
 | 1 | `Resp` can hold values RESP cannot encode | protocol / data design | open |
 | 2 | `fromBytes` silently discards trailing bytes | protocol | deferred |
-| 3 | RESP2 null array unsupported | protocol | open |
-| 4 | `$-2\r\n` parses as `NullBulkString` | protocol | open |
+| 3 | RESP2 null array unsupported | protocol | **fixed** |
+| 4 | `$-2\r\n` parses as `NullBulkString` | protocol | **fixed** |
 | 5 | `RedisInteger` overflows silently | protocol | open |
 | 6 | Commands and options are case-sensitive | command parsing | deferred |
 | 7 | Unknown SET options are silently discarded | command parsing | open |
@@ -131,56 +132,32 @@ command. `Text.Megaparsec.getInput` gives the remainder after a successful parse
 
 ---
 
-## 3. RESP2's null array is unsupported
+## 3. RESP2's null array is unsupported — FIXED
 
-**Status** open · **Area** protocol
+**Status** fixed · **Area** protocol
 
-RESP2's null array is `*-1\r\n` and is semantically distinct from the empty array `*0\r\n`.
-There is no `NullArray` constructor, so the parser rejects it.
+`NullArray` was added to `Resp`, with `toBytes NullArray = "*-1\r\n"` and a `pNullArray`
+branch. Pinned by `serializes a NullArray`, `deserializes a NullArray` and
+`rejects "*-2\r\n"` in `Resp.SerializationSpec`, and covered by the round-trip property.
 
-**Observed**
+**Worth keeping in mind.** The fix restructured `pRedisValue` into an `asum` whose null
+branches (`pNullBulkString` matching the literal `"$-1"`, `pNullArray` matching `"*-1"`) come
+*before* the general ones, carrying a `-- order matters!` comment. That ordering is safe
+without `try` for a non-obvious reason: Megaparsec's `string`/`string'` is atomic — it
+consumes nothing when it fails — so a failed `"$-1"` leaves the input untouched for
+`pBulkString`. Any branch added to that `asum` which can fail *after* consuming input needs
+an explicit `try`, or it will kill the alternatives that follow it. This is the same
+non-backtracking behaviour that previously made `pNullBulkString` unreachable.
 
-```
-fromBytes "*-1\r\n" = Nothing
-fromBytes "*0\r\n"  = Just (Array [])
-```
+---
 
-Rejecting is the right *interim* behaviour — better than conflating it with the empty array —
-but it means a reply real Redis can send is one we cannot read.
+## 4. `$-2\r\n` parses as `NullBulkString` — FIXED
 
-**Impact** None today: nothing in this codebase parses replies, only requests, and a client
-never sends a null array. It becomes real for anything that reads Redis output — the
-differential test harness, or a replica reading from a master. Redis sends `*-1\r\n` for an
-aborted `EXEC` and for older blocking-command timeouts.
+**Status** fixed · **Area** protocol
 
-**Why `pArray` parses its length unsigned, deliberately.** `pInteger` and
-`pBulkStringOrNull` use `pSignedDecimal`; `pArray` uses `L.decimal`. That asymmetry looks
-like an oversight and is load-bearing: `count` returns `pure []` for a negative argument
-instead of failing, so parsing the array length as signed silently turns `*-1\r\n` into
-`Array []`. That regression was introduced once, on consistency grounds, and reverted. It is
-now pinned by a test — `rejects "*-1\r\n"` in `Resp.SerializationSpec` — with a comment at
-both sites. Do not unify the sign handling without adding `NullArray` in the same change.
-
-**Fix direction** Add `NullArray` to `Resp` and branch on the sign the way
-`pBulkStringOrNull` does. At that point the length can be parsed signed and the test above
-flips from asserting rejection to asserting `Just NullArray`.
-
-## 4. `$-2\r\n` parses as `NullBulkString`
-
-**Status** open · **Area** protocol
-
-**Observed**
-
-```
-fromBytes "$-2\r\n" = Just NullBulkString
-```
-
-**Why** `pBulkStringOrNull` branches on `len < 0`. RESP only defines `$-1`.
-
-**Impact** Leniency, no known exploit. Recorded because it is an undecided question rather
-than a considered choice: tightening to `len == -1` is a one-word change, and leaving it lax
-is defensible. Not pinned by a test in either direction so that whichever is chosen is a
-decision rather than an accident.
+Resolved by the same restructure: `pNullBulkString` now matches the literal `"$-1"` rather
+than accepting any negative length, so `$-2\r\n` falls through to `pBulkString`, whose
+unsigned `pLength` rejects it. Pinned by `rejects "$-2\r\n"`.
 
 ---
 

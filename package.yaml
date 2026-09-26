@@ -72,5 +72,6 @@ tests:
       - codecrafters-redis
       - hspec
       - QuickCheck
+      - quickcheck-instances
     build-tools:
       - hspec-discover

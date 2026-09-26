@@ -8,9 +8,17 @@ import Resp (Resp (Array, NullArray, NullBulkString, RedisInteger, SimpleError, 
 import Resp.Data (Resp (BulkString))
 import Resp.Serialization (toBytes)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
+import Test.Hspec.QuickCheck (prop)
+import Test.QuickCheck (Arbitrary (arbitrary), Gen, forAll, listOf, oneof, resize, sized, (===))
+import Test.QuickCheck.Gen (suchThat)
+import Test.QuickCheck.Instances.ByteString ()
 
 spec :: Spec
 spec = do
+    describe "fromBytes . toBytes" $
+        prop "roundtrips" $ do
+            forAll genResp $ \v -> fromBytes (toBytes v) === Just v
+
     describe "toBytes" $ do
         it "serializes a positive RedisInteger" $
             toBytes (RedisInteger 5) `shouldBe` ":5" <> crlf
@@ -103,6 +111,10 @@ spec = do
                 rejects ("$abc" <> crlf)
             it "a non-numeric array length" $
                 rejects ("*x" <> crlf)
+            it "a negative array length other than -1" $
+                rejects ("*-2" <> crlf)
+            it "a negative bulk string length other than -1" $
+                rejects ("$-2" <> crlf)
             it "a bulk string longer than its declared length" $
                 rejects ("$2" <> crlf <> "hello" <> crlf)
   where
@@ -111,3 +123,21 @@ spec = do
 
     crlf :: BS.ByteString
     crlf = "\r\n"
+
+genResp :: Gen Resp
+genResp =
+    oneof
+        [ RedisInteger <$> arbitrary
+        , SimpleString <$> arbitrary `suchThat` noCRLF
+        , BulkString <$> arbitrary
+        , pure NullBulkString
+        , pure NullArray
+        , SimpleError <$> arbitrary `suchThat` noCRLF
+        , sized genArray
+        ]
+  where
+    genArray n
+        | n <= 0 = pure $ Array []
+        | otherwise = resize (n `div` 2) $ Array <$> listOf genResp
+
+    noCRLF str = 10 `BS.notElem` str && 13 `BS.notElem` str
