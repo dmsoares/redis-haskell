@@ -1,5 +1,4 @@
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Redis (RedisStore, newRedisStore, reply) where
 
@@ -14,6 +13,7 @@ import Redis.Store (newRedisStore)
 import qualified Redis.Workflows.Echo as Echo
 import qualified Redis.Workflows.Get as Get
 import qualified Redis.Workflows.Ping as Ping
+import qualified Redis.Workflows.RPush as RPush
 import qualified Redis.Workflows.Set as Set
 import Resp (Resp (..), ToResp, toResp)
 
@@ -30,6 +30,7 @@ dispatch receivedAt RedisStore{redisSet, redisGet} query =
             Echo payload -> runPure $ Echo.workflow payload
             Set payload -> runEffectful (Set.Env receivedAt redisSet) (Set.workflow payload)
             Get payload -> runEffectful (Get.Env receivedAt redisGet) (Get.workflow payload)
+            RPush payload -> runEffectful (RPush.Env receivedAt redisGet redisSet) (RPush.workflow payload)
   where
     runPure :: (ToResp a) => a -> IO Resp
     runPure = pure . toResp

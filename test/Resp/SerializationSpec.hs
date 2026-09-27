@@ -2,6 +2,7 @@
 
 module Resp.SerializationSpec (spec) where
 
+import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 
 import Resp (Resp (Array, NullArray, NullBulkString, RedisInteger, SimpleError, SimpleString), fromBytes)
@@ -9,7 +10,7 @@ import Resp.Data (Resp (BulkString))
 import Resp.Serialization (toBytes)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Test.Hspec.QuickCheck (prop)
-import Test.QuickCheck (Arbitrary (arbitrary), Gen, forAll, listOf, oneof, resize, sized, (===))
+import Test.QuickCheck (Arbitrary (arbitrary), Gen, forAllShrink, listOf, oneof, resize, shrink, shrinkList, sized, (===))
 import Test.QuickCheck.Gen (suchThat)
 import Test.QuickCheck.Instances.ByteString ()
 
@@ -17,7 +18,7 @@ spec :: Spec
 spec = do
     describe "fromBytes . toBytes" $
         prop "roundtrips" $ do
-            forAll genResp $ \v -> fromBytes (toBytes v) === Just v
+            forAllShrink genResp shrinkResp $ \v -> fromBytes (toBytes v) === Just v
 
     describe "toBytes" $ do
         it "serializes a positive RedisInteger" $
@@ -140,4 +141,14 @@ genResp =
         | n <= 0 = pure $ Array []
         | otherwise = resize (n `div` 2) $ Array <$> listOf genResp
 
-    noCRLF str = 10 `BS.notElem` str && 13 `BS.notElem` str
+noCRLF :: ByteString -> Bool
+noCRLF str = 10 `BS.notElem` str && 13 `BS.notElem` str
+
+shrinkResp :: Resp -> [Resp]
+shrinkResp (RedisInteger n) = RedisInteger <$> shrink n
+shrinkResp (SimpleString str) = SimpleString <$> filter noCRLF (shrink str)
+shrinkResp (BulkString str) = BulkString <$> shrink str
+shrinkResp NullBulkString = []
+shrinkResp NullArray = []
+shrinkResp (SimpleError str) = SimpleError <$> filter noCRLF (shrink str)
+shrinkResp (Array elems) = elems <> (Array <$> shrinkList shrinkResp elems)

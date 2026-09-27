@@ -14,9 +14,10 @@ data Command
     | Echo EchoPayload
     | Set SetPayload
     | Get GetPayload
+    | RPush RPushPayload
     deriving (Show)
 
-data EchoPayload = EchoPayload {message :: ByteString}
+newtype EchoPayload = EchoPayload {message :: ByteString}
     deriving (Show)
 
 data SetPayload = SetPayload
@@ -31,8 +32,14 @@ data SetOption
     | SetOptionPX Int
     deriving (Show)
 
-data GetPayload = GetPayload
+newtype GetPayload = GetPayload
     { key :: ByteString
+    }
+    deriving (Show)
+
+data RPushPayload = RPushPayload
+    { key :: ByteString
+    , value :: ByteString
     }
     deriving (Show)
 
@@ -42,6 +49,7 @@ fromResp (Array [BulkString "PING"]) = Just Ping
 fromResp (Array [BulkString "ECHO", BulkString message]) = Just $ Echo (EchoPayload{message})
 fromResp (Array (BulkString "SET" : BulkString key : BulkString value : opts)) = Just $ Set (SetPayload key value (parseSetOptions opts))
 fromResp (Array [BulkString "GET", BulkString key]) = Just $ Get (GetPayload key)
+fromResp (Array (BulkString "RPUSH" : BulkString key : BulkString value : _)) = Just $ RPush (RPushPayload key value)
 fromResp _ = Nothing
 
 parseSetOptions :: [Resp] -> [SetOption]
@@ -50,4 +58,4 @@ parseSetOptions (BulkString "PX" : BulkString ms : dts) = SetOptionPX (parseInt 
 parseSetOptions _ = []
 
 parseInt :: ByteString -> Int
-parseInt bs = maybe (-1) id $ fst <$> BC.readInt bs
+parseInt bs = maybe (-1) fst (BC.readInt bs)

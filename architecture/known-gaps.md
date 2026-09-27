@@ -34,6 +34,8 @@ on a spare port with `redis-server --port 6390 --save "" --appendonly no` and ta
 | 9 | Conflicting-expiry error message diverges | conformance | open |
 | 10 | No end-to-end test tier | testing | open |
 | 11 | Wrong arity reported as unknown command | conformance | open |
+| 12 | Simple strings and errors accept LF in the body | protocol | open |
+| 13 | `shrinkResp` has no depth move | testing | open |
 
 ---
 
@@ -86,10 +88,21 @@ strings, so no client-controlled bytes reach `SimpleError`. What wakes it up is 
 #8 — raising `MalformedExpiry bs` with the offending bytes is the obvious improvement there,
 and it makes this path live in the same commit. Fix #1 before or with #8.
 
+**Where the rule lives today.** The generator route was taken. `Resp.SerializationSpec`
+defines `noCRLF :: ByteString -> Bool` and applies it via `suchThat` to the `SimpleString`
+and `SimpleError` generators, and `shrinkResp` re-applies it to shrink candidates so
+shrinking cannot leave the domain. That makes the round-trip property true and meaningful —
+it kills every mutation tried against it — but the consequence is exactly the one below:
+**`noCRLF` is stated only in test code.** Nothing stops `lib/` constructing
+`SimpleString "a\r\nb"`, and `toBytes` will emit two frames for it without complaint.
+
+The property is therefore not evidence that the library maintains the invariant. It is
+evidence that the library round-trips values that *happen to* satisfy it.
+
 **Fix directions**
 
-- Constrain the generator only — cheapest, but the invariant then lives solely in test code
-  and production can still build the bad value.
+- Constrain the generator only — cheapest, and what is in place now. The invariant lives
+  solely in test code and production can still build the bad value.
 - Smart constructors returning `Maybe Resp`, or sanitising. These existed and were removed
   when the length fields went; reinstating them costs the raw constructors in the export list.
 - Make it unrepresentable, as was done for the length fields — needs a `newtype` wrapper for
@@ -320,6 +333,10 @@ injection draws.
 Inverting an effect makes the core deterministically testable and simultaneously
 concentrates the remaining risk in the thin shell that nothing tests.
 
+**Still true after property-based testing arrived.** The round-trip property covers
+`Resp.Serialization` thoroughly, but its domain is `Resp` values — it never sees a socket, a
+clock, or `Main.fullQuery`. The clock bug would still pass today.
+
 **Fix direction** A second suite that starts the server on an ephemeral port, drives a real
 socket, and asserts on reply bytes. The scenario that found the clock bug is the first case:
 `SET foo bar PX 100`, wait 150 ms, `GET foo`, expect `$-1`. Its mirror is just as important —
@@ -362,3 +379,74 @@ first, then validate arity against it, so "unknown name" and "known name, wrong 
 different errors. `arity` in `redis/redis:src/commands/*.json` gives the expected count for
 every command as data — `-3` meaning "at least 3, variadic" — so this is one rule driven by
 a table rather than a case per command.
+
+---
+
+## 12. Simple strings and errors accept LF in the body
+
+**Status** open · **Area** protocol
+
+RESP2 says a simple string is `+`, then bytes that **must not contain CR or LF**, then CRLF.
+`pSimpleString` stops at CR (`takeWhileP Nothing (/= 13)`) but says nothing about LF, so a
+frame the grammar forbids is accepted. `pSimpleError` is identical.
+
+**Observed**
+
+```
+fromBytes "+a\nb\r\n" = Just (SimpleString "a\nb")
+fromBytes "-a\nb\r\n" = Just (SimpleError "a\nb")
+```
+
+**Impact** We accept input real Redis would reject — leniency, not data loss, and no client
+sends this. It is logged because it is a *known* divergence from a spec we have read, and
+because it interacts with gap #1: the two together mean neither the type, nor the
+serializer, nor the parser enforces the CRLF-free rule anywhere in `lib/`. Only the test
+generator does.
+
+Note the round-trip property does **not** catch this, and cannot: the generator never
+produces a `SimpleString` containing LF, precisely because such a value has no wire form.
+It was found by reading the spec.
+
+**Fix direction** Reject rather than scan-to-CR — take bytes while neither CR nor LF, then
+require CRLF. That makes the parser agree with the grammar, and makes `"+a\nb\r\n"` a
+rejection case for `Resp.SerializationSpec`.
+
+---
+
+## 13. `shrinkResp` has no depth move
+
+**Status** open · **Area** testing
+
+```haskell
+shrinkResp (Array elems) = Array <$> shrinkList shrinkResp elems
+```
+
+`shrinkList` shortens the list and shrinks elements in place, but it can never replace an
+array by one of its children. So an array wrapper survives shrinking even when it is
+irrelevant to the failure, and with a generator reaching depth 7 that means up to seven
+layers of noise around the culprit.
+
+**Observed** — the same mutation (array elements serialized in reverse), two shrinkers:
+
+```
+without the depth move:  Array [Array [RedisInteger 0,NullArray]]
+with it:                 Array [NullArray,SimpleString ""]
+```
+
+**Impact** Counterexample legibility only; the property's bug-finding power is unaffected.
+Logged because it is a silent quality loss — the suite still reports a genuine failure, just
+a harder one to read, and nothing flags that the value could have been smaller.
+
+**Fix direction** Concatenate both families, which is the shape the QuickCheck haddock shows
+for recursive types (`[l, r] ++ [Branch l' r' | ...]`):
+
+```haskell
+shrinkResp (Array elems) = elems ++ (Array <$> shrinkList shrinkResp elems)
+```
+
+**Related constraint for later.** A shrinker belongs to its *generator*, not to the type. If
+a second generator over `Resp` appears — the arrays-of-bulk-strings shape a client actually
+sends — it needs its own shrinker: `elems` would immediately produce a non-array and leave
+that domain, reporting counterexamples the generator could never have produced. This is why
+the property uses `forAllShrink` with an explicit pair rather than an `Arbitrary Resp`
+instance, which would allow only one pair per type.

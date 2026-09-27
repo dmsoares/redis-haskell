@@ -57,6 +57,8 @@ library:
     - Redis.Workflows.Set.Data
     - Redis.Workflows.Get
     - Redis.Workflows.Get.Data
+    - Redis.Workflows.RPush
+    - Redis.Workflows.RPush.Data
     - Resp.Data
     - Resp.Serialization
 

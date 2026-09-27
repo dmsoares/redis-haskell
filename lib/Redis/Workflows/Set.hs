@@ -28,4 +28,4 @@ execute Input{key = Key key, value = Value value, options = Options{expiryTime}}
     now <- asks receivedAt
     set <- asks setKey
     liftIO $ set key (RedisRecord (RedisString value) now expiryTime)
-    pure $ OK
+    pure OK

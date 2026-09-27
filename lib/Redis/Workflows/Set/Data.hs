@@ -13,7 +13,7 @@ newtype Key = Key ByteString
     deriving (Show)
 newtype Value = Value ByteString
     deriving (Show)
-data Options = Options {expiryTime :: Maybe NominalDiffTime}
+newtype Options = Options {expiryTime :: Maybe NominalDiffTime}
     deriving (Show)
 
 data Input = Input

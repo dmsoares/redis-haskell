@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Resp.Serialization (toBytes, fromBytes) where
 
@@ -32,16 +31,14 @@ fromBytes bytes = either (const Nothing) Just (runParser pRedisValue "" bytes)
 
 pRedisValue :: Parser Resp
 pRedisValue =
-    -- order matters!
-    -- but shouldn't right? I need to come back to this...
-    asum
+    asum . fmap try $
         [ pInteger
-        , pNullBulkString
         , pBulkString
-        , pNullArray
+        , pNullBulkString
         , pArray
-        , pSimpleString
+        , pNullArray
         , pSimpleError
+        , pSimpleString
         ]
 
 pCRLF :: Parser ()
@@ -69,7 +66,7 @@ pNullBulkString :: Parser Resp
 pNullBulkString = do
     _ <- string' "$-1"
     pCRLF
-    pure $ NullBulkString
+    pure NullBulkString
 
 pBulkString :: Parser Resp
 pBulkString = do
@@ -83,7 +80,7 @@ pNullArray :: Parser Resp
 pNullArray = do
     _ <- string' "*-1"
     pCRLF
-    pure $ NullArray
+    pure NullArray
 
 pArray :: Parser Resp
 pArray = do

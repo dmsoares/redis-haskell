@@ -2,3 +2,15 @@ resolver: lts-23.18
 
 packages:
   - .
+
+# Stack's own automatic Nix integration otherwise wraps every invocation in
+# a `nix-shell` that pulls haskell.compiler.ghc984 from the *system*
+# nixpkgs channel (<nixpkgs>) rather than this repo's flake-pinned one.
+# That GHC reports the same version (9.8.4) as the flake's, but a
+# different ABI hash, which breaks HLS ("GHC ABIs don't match!"). Disabling
+# Nix integration and using the GHC already on PATH from `nix develop`
+# keeps stack and HLS on the exact same GHC build.
+nix:
+  enable: false
+system-ghc: true
+install-ghc: false

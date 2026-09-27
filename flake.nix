@@ -6,8 +6,14 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = import nixpkgs { inherit system; };
       in
@@ -15,8 +21,8 @@
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             stack
-            ghc
-            haskell-language-server
+            haskell.compiler.ghc984
+            haskell.packages.ghc984.haskell-language-server
             zlib
             pkg-config
 
@@ -33,5 +39,6 @@
             export LD_LIBRARY_PATH="${pkgs.zlib}/lib:$LD_LIBRARY_PATH"
           '';
         };
-      });
+      }
+    );
 }

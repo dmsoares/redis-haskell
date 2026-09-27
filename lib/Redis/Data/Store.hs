@@ -1,5 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-
 module Redis.Data.Store where
 
 import Data.ByteString (ByteString)
