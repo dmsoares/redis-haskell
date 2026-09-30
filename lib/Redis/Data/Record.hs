@@ -3,10 +3,11 @@
 module Redis.Data.Record where
 
 import Data.Time (NominalDiffTime, UTCTime, addUTCTime)
-import Redis.Data.DataType (RedisDataType)
+import Redis.Data.DataType (RedisType, RedisValue)
 
 data RedisRecord = RedisRecord
-    { value :: RedisDataType
+    { value :: RedisValue
+    , typeTag :: RedisType
     , insertedAt :: UTCTime
     , expiryTime :: Maybe NominalDiffTime
     }
@@ -18,7 +19,7 @@ expiresAt RedisRecord{insertedAt, expiryTime} = flip addUTCTime insertedAt <$> e
 isLive :: UTCTime -> RedisRecord -> Bool
 isLive now = maybe True (now <) . expiresAt
 
-liveValue :: UTCTime -> RedisRecord -> Maybe RedisDataType
+liveValue :: UTCTime -> RedisRecord -> Maybe RedisValue
 liveValue now rec
     | isLive now rec = Just $ value rec
     | otherwise = Nothing

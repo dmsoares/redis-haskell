@@ -2,7 +2,12 @@ module Redis.Data.DataType where
 
 import Data.ByteString (ByteString)
 
-data RedisDataType
-    = RedisString ByteString
-    | RedisList [RedisDataType]
+data RedisType
+    = RedisStringType
+    | RedisListType
+    deriving (Show, Eq)
+
+data RedisValue
+    = RedisStringValue ByteString
+    | RedisListValue [RedisValue]
     deriving (Show, Eq)

@@ -9,7 +9,7 @@ import Control.Monad.Reader (MonadIO, MonadReader, asks, liftIO)
 import Data.Time (UTCTime)
 
 import Redis.Data.Command (SetPayload (SetPayload))
-import Redis.Data.DataType (RedisDataType (RedisString))
+import Redis.Data.DataType (RedisType (RedisStringType), RedisValue (RedisStringValue))
 import Redis.Data.Error (RedisError)
 import Redis.Data.Record (RedisRecord (RedisRecord))
 import qualified Redis.Data.Store as Store
@@ -27,5 +27,5 @@ execute :: (MonadReader Env m, MonadIO m) => Input -> m Reply
 execute Input{key = Key key, value = Value value, options = Options{expiryTime}} = do
     now <- asks receivedAt
     set <- asks setKey
-    liftIO $ set key (RedisRecord (RedisString value) now expiryTime)
+    liftIO $ set key (RedisRecord (RedisStringValue value) RedisStringType now expiryTime)
     pure OK

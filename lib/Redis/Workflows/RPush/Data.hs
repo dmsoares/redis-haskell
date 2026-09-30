@@ -10,7 +10,7 @@ newtype Value = Value ByteString
 
 data Input = Input
     { key :: Key
-    , value :: Value
+    , values :: [Value]
     }
     deriving (Show)
 

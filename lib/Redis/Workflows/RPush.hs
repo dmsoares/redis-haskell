@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 module Redis.Workflows.RPush where
 
@@ -8,7 +10,7 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.Reader (MonadIO, MonadReader, asks, liftIO)
 import Data.Time (UTCTime)
 import Redis.Data.Command (RPushPayload (RPushPayload))
-import Redis.Data.DataType (RedisDataType (RedisList, RedisString))
+import Redis.Data.DataType (RedisType (RedisListType), RedisValue (RedisListValue, RedisStringValue))
 import Redis.Data.Error (RedisError (WrongDataType))
 import Redis.Data.Record (RedisRecord (RedisRecord))
 import qualified Redis.Data.Record as R
@@ -25,21 +27,27 @@ workflow :: (MonadReader Env m, MonadError RedisError m, MonadIO m) => RPushPayl
 workflow = pure . deserializeInput >=> execute
 
 deserializeInput :: RPushPayload -> Input
-deserializeInput (RPushPayload k v) = Input (Key k) (Value v)
+deserializeInput (RPushPayload k vs) = Input (Key k) (Value <$> vs)
 
 execute :: (MonadReader Env m, MonadError RedisError m, MonadIO m) => Input -> m Reply
-execute Input{key = Key key', value = Value value'} = do
+execute Input{key = Key key', values} = do
     now <- asks receivedAt
     get <- asks getKey
     set <- asks setKey
 
     mCurrentVal <- liftIO $ get key'
+
     case mCurrentVal of
         Nothing -> do
-            liftIO $ set key' (RedisRecord (RedisList [RedisString value']) now Nothing)
-            pure (OK 1)
-        Just record@RedisRecord{R.value} -> case value of
-            RedisList elems -> do
-                liftIO $ set key' record{R.value = RedisList (elems <> [RedisString value'])}
-                pure (OK (length elems + 1))
-            _ -> throwError $ WrongDataType ""
+            let newRecord = RedisRecord (RedisListValue (toRedisStringValue <$> values)) RedisListType now Nothing
+            setListRecord set key' newRecord
+        Just record@RedisRecord{R.value = recordValue, R.typeTag = recordType} -> case recordValue of
+            RedisListValue elems -> do
+                let updatedRecord = record{R.value = RedisListValue (elems <> (toRedisStringValue <$> values))}
+                setListRecord set key' updatedRecord
+            _ -> throwError $ WrongDataType (show recordType)
+  where
+    setListRecord setter key record@RedisRecord{R.value = (RedisListValue list)} = do
+        _ <- liftIO $ setter key record
+        pure $ OK (length list)
+    toRedisStringValue (Value v) = RedisStringValue v

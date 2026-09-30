@@ -8,7 +8,7 @@ import Data.Time (UTCTime)
 
 import Control.Monad.Except (MonadError (throwError))
 import Redis.Data.Command (GetPayload (GetPayload))
-import Redis.Data.DataType (RedisDataType (RedisString))
+import Redis.Data.DataType (RedisValue (RedisStringValue))
 import Redis.Data.Error (RedisError (WrongDataType))
 import Redis.Data.Record (RedisRecord (RedisRecord, value), isLive)
 import qualified Redis.Data.Store as Store
@@ -30,7 +30,7 @@ execute Input{key = Key k} = do
     handleResult $ do
         record@RedisRecord{value} <- maybe (Left NotFound) Right mRecord
         case (isLive now record, value) of
-            (True, RedisString str) -> Right str
+            (True, RedisStringValue str) -> Right str
             (True, _) -> Left (WrongType "String")
             (False, _) -> Left DeadValue
   where
