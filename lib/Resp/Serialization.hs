@@ -4,7 +4,6 @@ module Resp.Serialization (toBytes, fromBytes) where
 
 import Resp.Data (Resp (..))
 
-import Control.Applicative (asum)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as Char8
 import Data.Void
@@ -31,7 +30,7 @@ fromBytes bytes = either (const Nothing) Just (runParser pRedisValue "" bytes)
 
 pRedisValue :: Parser Resp
 pRedisValue =
-    asum . fmap try $
+    choice . fmap try $
         [ pInteger
         , pBulkString
         , pNullBulkString
