@@ -9,7 +9,8 @@ import Data.Time (UTCTime)
 import Control.Monad.Except (MonadError (throwError))
 import Redis.Data.Command (GetPayload (GetPayload))
 import Redis.Data.DataType (RedisValue (RedisStringValue))
-import Redis.Data.Error (RedisError (WrongDataType))
+import Redis.Data.Error (RedisError)
+import qualified Redis.Data.Error as RedisError
 import Redis.Data.Record (RedisRecord (RedisRecord, value), isLive)
 import qualified Redis.Data.Store as Store
 import Redis.Workflows.Get.Data (Error (..), Input (Input, key), Key (Key), Reply (..))
@@ -31,10 +32,10 @@ execute Input{key = Key k} = do
         record@RedisRecord{value} <- maybe (Left NotFound) Right mRecord
         case (isLive now record, value) of
             (True, RedisStringValue str) -> Right str
-            (True, _) -> Left (WrongType "String")
+            (True, _) -> Left WrongType
             (False, _) -> Left DeadValue
   where
     handleResult (Right str) = pure $ Value str
     handleResult (Left DeadValue) = pure Nil
     handleResult (Left NotFound) = pure Nil
-    handleResult (Left (WrongType typ)) = throwError $ WrongDataType typ
+    handleResult (Left WrongType) = throwError $ RedisError.WrongType

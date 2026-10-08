@@ -9,7 +9,7 @@ import Control.Monad.Reader (MonadIO, MonadReader, asks, liftIO)
 import Data.Time (UTCTime)
 import Redis.Data.Command (RPushPayload (RPushPayload))
 import Redis.Data.DataType (RedisType (RedisListType), RedisValue (RedisListValue, RedisStringValue))
-import Redis.Data.Error (RedisError (WrongDataType))
+import Redis.Data.Error (RedisError (WrongNumberOfArgumentsForRPushCommand, WrongType))
 import Redis.Data.Record (RedisRecord (RedisRecord))
 import qualified Redis.Data.Record as R
 import qualified Redis.Data.Store as Store
@@ -22,10 +22,11 @@ data Env = Env
     }
 
 workflow :: (MonadReader Env m, MonadError RedisError m, MonadIO m) => RPushPayload -> m Reply
-workflow = pure . deserializeInput >=> execute
+workflow = deserializeInput >=> execute
 
-deserializeInput :: RPushPayload -> Input
-deserializeInput (RPushPayload k vs) = Input (Key k) (Value <$> vs)
+deserializeInput :: (MonadError RedisError m) => RPushPayload -> m Input
+deserializeInput (RPushPayload _ []) = throwError WrongNumberOfArgumentsForRPushCommand
+deserializeInput (RPushPayload k vs) = pure $ Input (Key k) (Value <$> vs)
 
 execute :: (MonadReader Env m, MonadError RedisError m, MonadIO m) => Input -> m Reply
 execute Input{key = Key key', values} = do
@@ -39,11 +40,11 @@ execute Input{key = Key key', values} = do
         Nothing -> do
             let newRecord = RedisRecord (RedisListValue (toRedisStringValue <$> values)) RedisListType now Nothing
             setListRecord set key' newRecord
-        Just record@RedisRecord{R.value = recordValue, R.typeTag = recordType} -> case recordValue of
+        Just record@RedisRecord{R.value = recordValue} -> case recordValue of
             RedisListValue elems -> do
                 let updatedRecord = record{R.value = RedisListValue (elems <> (toRedisStringValue <$> values))}
                 setListRecord set key' updatedRecord
-            _ -> throwError $ WrongDataType (show recordType)
+            _ -> throwError WrongType
   where
     setListRecord setter key record@RedisRecord{R.value = (RedisListValue list)} = do
         _ <- liftIO $ setter key record

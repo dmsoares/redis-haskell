@@ -1,22 +1,23 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Redis.Data.Error (RedisError (..)) where
 
-import Codec.Binary.UTF8.String (encode)
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
 import Resp.Data (Resp (SimpleError), ToResp (..))
 
 data RedisError
     = UnknownCommand
-    | ConflictingExpiryOptions
+    | InvalidExpireTimeInSetCommand
     | MalformedExpiry ByteString
-    | WrongDataType String
+    | WrongType
+    | WrongNumberOfArgumentsForRPushCommand
+    | SyntaxError
     deriving (Show, Eq)
 
 instance ToResp RedisError where
     toResp UnknownCommand = SimpleError "ERR unknown command"
-    toResp ConflictingExpiryOptions = SimpleError "ERR conflicting expiry options"
+    toResp InvalidExpireTimeInSetCommand = SimpleError "ERR invalid expire time in 'set' command"
     toResp (MalformedExpiry s) = SimpleError $ "ERR malformed expiry:" <> s
-    toResp (WrongDataType expected) = SimpleError $ "ERR wrong data type. Expected " <> BS.pack (encode expected)
+    toResp WrongType = SimpleError $ "WRONGTYPE Operation against a key holding the wrong kind of value"
+    toResp WrongNumberOfArgumentsForRPushCommand = SimpleError $ "ERR wrong number of arguments for 'rpush' command"
+    toResp SyntaxError = SimpleError $ "ERR syntax error"

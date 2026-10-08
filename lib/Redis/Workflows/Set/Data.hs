@@ -6,7 +6,6 @@ import Data.ByteString (ByteString)
 import Data.Maybe (isJust)
 import Data.Time (NominalDiffTime)
 import Redis.Data.Command (SetOption (SetOptionEX, SetOptionPX))
-import Redis.Data.Error (RedisError (..))
 import Resp.Data (Resp (SimpleString), ToResp (toResp))
 
 newtype Key = Key ByteString
@@ -27,15 +26,14 @@ data Reply = OK
     deriving (Show)
 
 -- Serialization
-deserializeOptions :: [SetOption] -> Either RedisError Options
-deserializeOptions opts = Options <$> getExpiryTime opts
+deserializeOptions :: [SetOption] -> Options
+deserializeOptions opts = Options $ getExpiryTime opts
 
-getExpiryTime :: [SetOption] -> Either RedisError (Maybe NominalDiffTime)
+getExpiryTime :: [SetOption] -> Maybe NominalDiffTime
 getExpiryTime os = go (filter isJust $ fmap f os)
   where
-    go [] = Right Nothing
-    go [o] = Right $ fmap msToDiff o
-    go _ = Left ConflictingExpiryOptions
+    go [] = Nothing
+    go (o : _) = fmap msToDiff o
 
     f (SetOptionEX s) = Just (s * 1000)
     f (SetOptionPX ms) = Just ms

@@ -17,7 +17,7 @@ data Reply
 
 data Error
     = DeadValue
-    | WrongType String
+    | WrongType
     | NotFound
 
 -- Serialization

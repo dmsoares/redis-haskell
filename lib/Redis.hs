@@ -7,7 +7,6 @@ import Control.Monad.Reader (ReaderT (runReaderT))
 import Data.Time (UTCTime)
 
 import Redis.Data.Command (Command (..), fromResp)
-import Redis.Data.Error (RedisError (UnknownCommand))
 import Redis.Data.Store (RedisStore (..))
 import Redis.Store (newRedisStore)
 import qualified Redis.Workflows.Echo as Echo
@@ -24,8 +23,8 @@ reply = dispatch
 dispatch :: UTCTime -> RedisStore -> Resp -> IO Resp
 dispatch receivedAt RedisStore{redisSet, redisGet} query =
     case fromResp query of
-        Nothing -> runPure $ UnknownCommand
-        Just cmd -> case cmd of
+        Left e -> runPure $ e
+        Right cmd -> case cmd of
             Ping -> runPure Ping.workflow
             Echo payload -> runPure $ Echo.workflow payload
             Set payload -> runEffectful (Set.Env receivedAt redisSet) (Set.workflow payload)
