@@ -17,8 +17,9 @@ import Test.QuickCheck.Instances.ByteString ()
 spec :: Spec
 spec = do
     describe "fromBytes . toBytes" $
-        prop "roundtrips" $ do
-            forAllShrink genResp shrinkResp $ \v -> fromBytes (toBytes v) === Just v
+        prop "roundtrips" $
+            forAllShrink genResp shrinkResp $
+                \v -> fromBytes (toBytes v) === Just v
 
     describe "toBytes" $ do
         it "serializes a positive RedisInteger" $
