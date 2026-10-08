@@ -12,13 +12,13 @@ import Control.Applicative (Alternative (..))
 import Control.Applicative.Combinators (choice)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BC
+import qualified Data.Char as Char
 import qualified Data.List as List
-import Data.Text (Text, toLower)
-import Data.Text.Encoding (decodeASCII, encodeUtf8)
+import Data.Text (Text)
 import Prelude hiding (fail)
 
-import Redis.Data.Error (RedisError (InvalidExpireTimeInSetCommand, SyntaxError, UnknownCommand))
-import Resp (Resp (..), toBytes)
+import Redis.Data.Error (RedisError (InvalidExpireTimeInSetCommand, NotAnInteger, SyntaxError, UnknownCommand, WrongNumberOfArguments))
+import Resp (Resp (..))
 
 data Command
     = Ping
@@ -56,7 +56,7 @@ data RPushPayload = RPushPayload
 
 -- Serialization
 fromResp :: Resp -> Either RedisError Command
-fromResp resp = flip runParser resp $ pCommand -- choice [pPing, pEcho, pGet, pSet, pRPush]
+fromResp resp = flip runParser resp $ pCommand
 
 -- Lexer
 commandTokens :: Resp -> Either RedisError [ByteString]
@@ -76,67 +76,78 @@ runParser p bs = do
     (cmd, _) <- runCmd p ts
     pure cmd
 
-instance Applicative Parser where
-    pure x = Parser $ \bs -> (Right (x, bs))
-
-    p1 <*> p2 = Parser $ \bs -> do
-        (f, bs') <- runCmd p1 bs
-        (a, bs'') <- runCmd p2 bs'
-        pure $ (f a, bs'')
-
-instance Alternative Parser where
-    empty = Parser $ const (Left SyntaxError)
-
-    p1 <|> p2 = Parser $ \bs ->
-        case runCmd p1 bs of
-            Right x -> pure x
-            Left _ -> runCmd p2 bs
-
-instance Monad Parser where
-    p >>= k = Parser $ \bs -> do
-        (a, bs') <- runCmd p bs
-        runCmd (k a) bs'
-
-fail :: RedisError -> Parser a
-fail e = Parser $ \_ -> Left e
+pCommand :: Parser Command
+pCommand = do
+    t <- token
+    case lower t of
+        "ping" -> pure Ping
+        "echo" -> pEcho
+        "get" -> pGet
+        "set" -> pSet
+        "rpush" -> pRPush
+        _ -> fail $ UnknownCommand t
 
 token :: Parser ByteString
 token = Parser $ \case
     (b : bs) -> Right (b, bs)
     _ -> Left SyntaxError
 
+eof :: Parser ()
+eof = Parser $ \case
+    [] -> Right ((), [])
+    _ -> Left SyntaxError
+
+withError :: RedisError -> Parser a -> Parser a
+withError e p = Parser $ \bs ->
+    case runCmd p bs of
+        Left _ -> Left e
+        r -> r
+
 pInt :: Parser Int
 pInt = do
     t <- token
-    pure $ maybe (-1) fst (BC.readInt t)
+    maybe
+        (fail NotAnInteger)
+        (pure . fst)
+        (BC.readInt t)
 
 pPing :: Parser Command
-pPing = do
-    _ <- pName "ping"
-    pure Ping
+pPing = pure Ping
 
 pEcho :: Parser Command
 pEcho = do
-    _ <- pName "echo"
-    msg <- token
+    msg <- withE token
+    withE eof
     pure $ Echo (EchoPayload msg)
+  where
+    withE = withError (WrongNumberOfArguments "echo")
 
 pGet :: Parser Command
 pGet = do
-    _ <- pName "get"
-    k <- token
+    k <- withE token
+    withE eof
     pure $ Get (GetPayload k)
+  where
+    withE = withError (WrongNumberOfArguments "get")
 
 pSet :: Parser Command
 pSet = do
-    _ <- pName "set"
-    k <- token
-    v <- token
+    (k, v) <- withE $ liftA2 (,) token token
     opts <- pSetOptions
+    eof
     pure $ Set (SetPayload k v opts)
+  where
+    withE = withError (WrongNumberOfArguments "set")
 
--- >>> fromResp $ Array [BulkString "SET", BulkString "c", BulkString "", BulkString "EX", BulkString "-14", BulkString "EX", BulkString "14", BulkString "EX", BulkString "-14", BulkString "EX", BulkString "14"]
--- Left InvalidExpireTimeInSetCommand
+pRPush :: Parser Command
+pRPush = do
+    k <- withE token
+    vs <- many token
+    case vs of
+        [] -> withE empty
+        _ -> pure $ RPush (RPushPayload k vs)
+  where
+    withE = withError (WrongNumberOfArguments "rpush")
 
 pSetOptions :: Parser [SetOption]
 pSetOptions = do
@@ -164,37 +175,36 @@ pSetOptions = do
     idxs xs = fst <$> xs
     partition pxs = List.partition ((> 0) . snd) (zip [0 :: Int ..] pxs)
 
-pRPush :: Parser Command
-pRPush = do
-    _ <- pName "rpush"
-    k <- token
-    vs <- many token
-    pure $ RPush (RPushPayload k vs)
-
-pName :: Text -> Parser ByteString
+pName :: ByteString -> Parser ByteString
 pName name = do
-    t <- token
-    let parsed = toLower (decodeASCII t)
-    if parsed == toLower name
-        then pure $ encodeUtf8 parsed
+    t <- lower <$> token
+    if t == lower name
+        then pure t
         else empty
 
-pCommand :: Parser Command
-pCommand = do
-    name <- choice $ (pName <$> cmds)
-    case name of
-        "ping" -> pure Ping
-        "echo" -> do msg <- token; pure $ Echo (EchoPayload msg)
-        "get" -> do k <- token; pure $ Get (GetPayload k)
-        "set" -> do k <- token; v <- token; opts <- pSetOptions; pure $ Set (SetPayload k v opts)
-        "rpush" -> do k <- token; vs <- many token; pure $ RPush (RPushPayload k vs)
-        _ -> fail UnknownCommand
-  where
-    cmds :: [Text]
-    cmds =
-        [ "ping"
-        , "echo"
-        , "get"
-        , "set"
-        , "rpush"
-        ]
+lower :: ByteString -> ByteString
+lower = BC.map Char.toLower
+
+instance Applicative Parser where
+    pure x = Parser $ \bs -> (Right (x, bs))
+
+    p1 <*> p2 = Parser $ \bs -> do
+        (f, bs') <- runCmd p1 bs
+        (a, bs'') <- runCmd p2 bs'
+        pure $ (f a, bs'')
+
+instance Alternative Parser where
+    empty = Parser $ const (Left SyntaxError)
+
+    p1 <|> p2 = Parser $ \bs ->
+        case runCmd p1 bs of
+            Right x -> pure x
+            Left _ -> runCmd p2 bs
+
+instance Monad Parser where
+    p >>= k = Parser $ \bs -> do
+        (a, bs') <- runCmd p bs
+        runCmd (k a) bs'
+
+fail :: RedisError -> Parser a
+fail e = Parser $ \_ -> Left e

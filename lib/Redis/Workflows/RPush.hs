@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Redis.Workflows.RPush where
 
@@ -9,7 +10,7 @@ import Control.Monad.Reader (MonadIO, MonadReader, asks, liftIO)
 import Data.Time (UTCTime)
 import Redis.Data.Command (RPushPayload (RPushPayload))
 import Redis.Data.DataType (RedisType (RedisListType), RedisValue (RedisListValue, RedisStringValue))
-import Redis.Data.Error (RedisError (WrongNumberOfArgumentsForRPushCommand, WrongType))
+import Redis.Data.Error (RedisError (WrongType))
 import Redis.Data.Record (RedisRecord (RedisRecord))
 import qualified Redis.Data.Record as R
 import qualified Redis.Data.Store as Store
@@ -22,11 +23,10 @@ data Env = Env
     }
 
 workflow :: (MonadReader Env m, MonadError RedisError m, MonadIO m) => RPushPayload -> m Reply
-workflow = deserializeInput >=> execute
+workflow = pure . deserializeInput >=> execute
 
-deserializeInput :: (MonadError RedisError m) => RPushPayload -> m Input
-deserializeInput (RPushPayload _ []) = throwError WrongNumberOfArgumentsForRPushCommand
-deserializeInput (RPushPayload k vs) = pure $ Input (Key k) (Value <$> vs)
+deserializeInput :: RPushPayload -> Input
+deserializeInput (RPushPayload k vs) = Input (Key k) (Value <$> vs)
 
 execute :: (MonadReader Env m, MonadError RedisError m, MonadIO m) => Input -> m Reply
 execute Input{key = Key key', values} = do
