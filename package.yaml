@@ -75,5 +75,10 @@ tests:
       - hspec
       - QuickCheck
       - quickcheck-instances
+      # Differential testing against a real redis-server
+      - directory
+      - network
+      - network-simple
+      - process
     build-tools:
       - hspec-discover
