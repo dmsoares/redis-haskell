@@ -24,3 +24,5 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
+# redis-server writes this if it is ever started without --save ""
+dump.rdb

@@ -16,10 +16,19 @@ without repeating the investigation.
   test is the permanent record, this file is only the waiting room.
 - Entries that turn into design decisions graduate to `decisions/`.
 
-Last verified against `3603a55` on 2026-09-24. Claims about *real* Redis behaviour were
+Last verified on 2026-10-13, against the working tree on top of `2408f3c`. Claims about *real* Redis behaviour were
 checked against `redis-server` 8.10.1, available in the dev shell via `flake.nix` — start one
 on a spare port with `redis-server --port 6390 --save "" --appendonly no` and talk to it with
 `redis-cli -p 6390`.
+
+Since 2026-10-09 most of this is also checked automatically. `Redis.ConformanceSpec` holds
+the rows we match, `Redis.DifferentialSpec`'s `baseline` holds the divergence classes we do
+not, and `Redis.ModelSpec` holds expiry semantics on a logical clock. An entry here that has
+no corresponding test is an entry nothing is watching.
+
+Sentences of the form "a mutation doing X fails N rows" record a **hand mutation audit run
+once on 2026-10-09**. No tooling re-runs it, so those counts are dated observations, not
+guarantees.
 
 | # | Gap | Area | Status |
 |---|-----|------|--------|
@@ -28,14 +37,19 @@ on a spare port with `redis-server --port 6390 --save "" --appendonly no` and ta
 | 3 | RESP2 null array unsupported | protocol | **fixed** |
 | 4 | `$-2\r\n` parses as `NullBulkString` | protocol | **fixed** |
 | 5 | `RedisInteger` overflows silently | protocol | open |
-| 6 | Commands and options are case-sensitive | command parsing | deferred |
-| 7 | Unknown SET options are silently discarded | command parsing | open |
+| 6 | Commands and options are case-sensitive | command parsing | **fixed** |
+| 7 | Unknown SET options are silently discarded | command parsing | **fixed** |
 | 8 | Malformed and negative expiry values are accepted | command parsing | open |
-| 9 | Conflicting-expiry error message diverges | conformance | open |
-| 10 | No end-to-end test tier | testing | open |
-| 11 | Wrong arity reported as unknown command | conformance | open |
+| 9 | Conflicting-expiry error message diverges | conformance | **fixed** |
+| 10 | No end-to-end test tier | testing | partly closed |
+| 11 | Wrong arity reported as unknown command | conformance | mostly **fixed** |
 | 12 | Simple strings and errors accept LF in the body | protocol | open |
 | 13 | `shrinkResp` has no depth move | testing | open |
+| 14 | `RPUSH` ignores expiry and sees dead records | store semantics | **fixed** |
+| 15 | Expiry integer grammar is looser than Redis's | command parsing | open |
+| 16 | A value error pre-empts a grammar error | command parsing | open |
+| 17 | An option's value is not consumed positionally | command parsing | open |
+| 18 | List order is unobservable, so untested | testing | open |
 
 ---
 
@@ -92,7 +106,8 @@ and it makes this path live in the same commit. Fix #1 before or with #8.
 defines `noCRLF :: ByteString -> Bool` and applies it via `suchThat` to the `SimpleString`
 and `SimpleError` generators, and `shrinkResp` re-applies it to shrink candidates so
 shrinking cannot leave the domain. That makes the round-trip property true and meaningful —
-it kills every mutation tried against it — but the consequence is exactly the one below:
+it killed every mutation tried by hand when it was written — but the consequence is
+exactly the one below:
 **`noCRLF` is stated only in test code.** Nothing stops `lib/` constructing
 `SimpleString "a\r\nb"`, and `toBytes` will emit two frames for it without complaint.
 
@@ -198,66 +213,66 @@ overflow. RESP integers are specified as signed 64-bit.
 
 ---
 
-## 6. Commands and options are case-sensitive
+## 6. Commands and options are case-sensitive — FIXED
 
-**Status** deferred — explicitly out of scope for now · **Area** command parsing
+**Status** fixed · **Area** command parsing
 
-Redis command and option names are case-insensitive. `fromResp` matches uppercase literals
-(`"PING"`, `"ECHO"`, `"SET"`, `"GET"`), and `parseSetOptions` matches `"EX"` / `"PX"`.
+`Redis.Data.Command.lower` (`BC.map Char.toLower`, which is byte-safe where the earlier
+`decodeASCII` was partial) now normalises the command name in `pCommand` and the option name
+in `pName`. Keys and values are untouched, as they must be.
 
-**Observed**
+Pinned by the `PING` / `ping` / `PiNg`, `ECHO` / `echo`, `RPUSH` / `rpush` and
+`EX` / `ex`, `PX` / `px` rows in `Redis.ConformanceSpec`, and by the `bogus` row, which
+checks the *argument* survives byte for byte in the error message. A mutation reducing
+`lower` to `id` fails 38 of those rows.
 
-```
-fromResp ["SET","k","v","px","100"] = Just (Set (SetPayload "k" "v" []))     -- TTL lost
-fromResp ["SET","k","v","PX","100"] = Just (Set (SetPayload "k" "v" [PX 100]))
-fromResp ["set","k","v","PX","100"] = Nothing                                -- UnknownCommand
-fromResp ["ping"]                   = Nothing
-```
 
-**Impact** The lowercase *command* case is loud — it becomes `ERR unknown command`. The
-lowercase *option* case is silent and worse: `SET foo bar px 100` answers `+OK` and stores a
-key with no TTL. Verified against a live server: `px` never expires, `PX` expires correctly.
+## 7. Unknown SET options are silently discarded — FIXED
 
-Real Redis accepts either case throughout — `set k v px 100` and `ping` both work on 8.10.1.
+**Status** fixed · **Area** command parsing
 
-**Fix direction** Normalise the command and token names once, at the `fromResp` boundary,
-rather than adding cases. Keep keys and values untouched — those are binary and
-case-sensitive.
-
----
-
-## 7. Unknown SET options are silently discarded
-
-**Status** open · **Area** command parsing
-
-`parseSetOptions`' catch-all `_ = []` drops anything it does not recognise, including the
-rest of the option list.
+The catch-all is gone: `pSet` requires `eof` after `pSetOptions`, so an unrecognised token
+is a `SyntaxError` rather than a dropped option.
 
 **Observed**
 
 ```
-fromResp ["SET","k","v","BOGUS"] = Just (Set (SetPayload "k" "v" []))
+SET k v BOGUS           ->  -ERR syntax error        (redis 8.10.1: identical)
+SET k v EX 100 BOGUS    ->  -ERR syntax error        (redis 8.10.1: identical)
 ```
 
-Real Redis answers `ERR syntax error`:
+Pinned by those two rows in `Redis.ConformanceSpec`. A mutation replacing `pSet`'s `eof`
+with `pure ()` fails both.
+
+Note what remains, as gap #16: Redis reaches the syntax error even when the option list also
+carries an *invalid value*, and we report the value error first.
+
+
+## 8. Malformed and negative expiry values are accepted — PARTLY FIXED
+
+**Status** open (narrowed) · **Area** command parsing
+
+**What is fixed.** Values are no longer *accepted*. `pInt` raises `NotAnInteger` instead of
+defaulting to `-1`, and `pSetOptions` rejects non-positive expiry, zero included. Pinned by
+the `EX 0`, `EX -1`, `PX 0` and `PX -500` rows in `Redis.ConformanceSpec`; a mutation
+loosening the boundary to `>= 0` fails two of them.
+
+**What remains, and is the live part of this entry.** The *error text* for an unparseable
+value is still wrong, because `many`/`<|>` discards `NotAnInteger` from a branch that had
+already consumed input and the generic `SyntaxError` from the failed alternative escapes
+instead:
 
 ```
-redis 8.10.1:  SET k v BOGUS  ->  ERR syntax error
+SET k v EX abc  ->  ours: -ERR syntax error
+                    redis: -ERR value is not an integer or out of range
 ```
 
-**Impact** A client typo becomes a successful write with the wrong semantics. Note the
-catch-all also truncates: an unrecognised token stops parsing, so any valid options *after*
-it are lost too.
+Recorded as `NonIntegerExpiryIsSyntaxError` in `Redis.DifferentialSpec`'s baseline. Gaps
+#15, #16 and #17 are the rest of the same parser shape, and `MalformedExpiry` is still
+unconstructed, so gap #1's response-splitting path is still dormant.
 
-**Fix direction** Return `Either RedisError [SetOption]` and fail on the first unrecognised
-token. `redis/redis:src/commands/set.json` is a machine-readable grammar for this and is
-worth generating from rather than hand-writing — see `architecture/research/spec-driven-development.md`.
+**Original entry follows.**
 
----
-
-## 8. Malformed and negative expiry values are accepted
-
-**Status** open · **Area** command parsing
 
 `Command.parseInt` swallows parse failures: `maybe (-1) id $ fst <$> BC.readInt bs`.
 
@@ -287,42 +302,47 @@ what activates the response-splitting path, so the two must be fixed together.
 
 ---
 
-## 9. Conflicting-expiry error message diverges
+## 9. Conflicting-expiry error message diverges — FIXED
 
-**Status** open · **Area** conformance
+**Status** fixed · **Area** conformance
+
+`ConflictingExpiryOptions` was deleted rather than renamed, which was the right call: two
+expiry tokens are a grammar violation, not a semantic conflict. `pSetOptions` now returns
+`empty` — a `SyntaxError` — when both `EX` and `PX` are present.
 
 **Observed**
 
 ```
-fromResp ["SET","k","v","EX","1","PX","1000"]
-  = Just (Set (SetPayload "k" "v" [SetOptionEX 1, SetOptionPX 1000]))
+SET k v EX 1 PX 1000    ->  -ERR syntax error        (redis 8.10.1: identical)
+SET k v PX 1000 EX 1    ->  -ERR syntax error        (redis 8.10.1: identical)
 ```
 
-…which `deserializeOptions` turns into `ConflictingExpiryOptions` →
-`-ERR conflicting expiry options`.
+Pinned by both rows in `Redis.ConformanceSpec` — both orders, because the rule is
+order-independent and a one-sided test would not say so. A mutation turning that branch into
+`pure []` fails them.
 
-In `set.json` the `expiration` argument is a `oneof`, so two expiry tokens are a **grammar
-violation** rather than a semantic conflict, and real Redis answers `ERR syntax error`:
 
-```
-redis 8.10.1:  SET k v EX 1 PX 1000  ->  ERR syntax error
-```
+## 10. No end-to-end test tier — PARTLY CLOSED
 
-Our error name is also wrong about the nature of the problem: nothing *conflicts*, the
-command simply does not parse.
+**Status** open (narrowed to the socket) · **Area** testing
 
-**Impact** Cosmetic unless a client matches on error text, which real clients do. Recorded
-mainly as the clearest example of a divergence that reading our own code can never reveal —
-it needs either the published grammar or a differential test against a real server.
+**What is closed.** `Redis.Sut` drives the implementation at the same boundary
+`app/Main.hs` uses — bytes in through `fromBytes`, `reply` with an injected clock, bytes out
+through `toBytes` — so the deserializer, dispatcher and serializer are all inside the tested
+region. `Redis.Reference` starts a real `redis-server` on an ephemeral port, so the
+differential suite is self-contained and runs on a fresh clone.
 
-**Fix direction** Comes free with #7 if the option list is validated against the published
-grammar. `ConflictingExpiryOptions` can then be deleted rather than renamed.
+The clock scenario named below is now a test, in `Redis.ModelSpec`, and better than the one
+proposed: on a *logical* clock, so it needs no sleep and reproduces from its seed. Both
+directions are covered — keys outliving a TTL and keys born dead.
 
----
+**What remains.** Nothing drives a real socket against our own server. `Main.fullQuery`'s
+buffering loop, its treatment of `Nothing` as "need more bytes" (gap #2) and its
+`segmentSize` chunking are still untested, and that loop is exactly where the clock bug
+lived. The thin shell is thinner than it was, and still uncovered.
 
-## 10. No end-to-end test tier
+**Original entry follows.**
 
-**Status** open · **Area** testing
 
 Everything under test today is reached through the library. The clock-injection bug lived in
 `app/Main.hs` — the clock was sampled *before* the blocking `fullQuery`, so every command was
@@ -346,9 +366,29 @@ would have gone green on it.
 
 ---
 
-## 11. Wrong arity is reported as an unknown command
+## 11. Wrong arity is reported as an unknown command — MOSTLY FIXED
 
-**Status** open · **Area** conformance
+**Status** open (narrowed to `PING`) · **Area** conformance
+
+**What is fixed.** Name resolution and argument matching are now separate: `pCommand`
+resolves the name, then each `p*` validates its own shape through
+`withError (WrongNumberOfArguments name)`. `ECHO`, `GET`, `SET` and `RPUSH` all report the
+right error with the right command name.
+
+`Redis.ConformanceSpec` drives these from the `arity` field of `COMMAND INFO` rather than
+case by case, which is what the original fix direction asked for — `echo 2`, `get 2`,
+`set -3`, `rpush -3`, captured verbatim. A mutation dropping the command name from the error
+fails eight rows.
+
+**What remains.** `PING`, and only `PING`. `pPing = pure Ping` never looks at its arguments,
+so `PING hello` answers `+PONG` where Redis echoes the message, and `PING a b` answers
+`+PONG` where Redis reports wrong arity. Note this is *not* derivable from arity: `PING` is
+`-1`, so "at least one token", and a zero-token frame is not a command. Redis rejects three
+tokens by a command-specific check. Recorded as `PingIgnoresArguments` in
+`Redis.DifferentialSpec`'s baseline.
+
+**Original entry follows.**
+
 
 `fromResp` matches each command by an exact-shape pattern, so a command with the right name
 but the wrong number of arguments falls through to the catch-all and becomes
@@ -450,3 +490,148 @@ sends — it needs its own shrinker: `elems` would immediately produce a non-arr
 that domain, reporting counterexamples the generator could never have produced. This is why
 the property uses `forAllShrink` with an explicit pair rather than an `Arbitrary Resp`
 instance, which would allow only one pair per type.
+
+---
+
+## 14. `RPUSH` ignores expiry and appends to dead records — FIXED
+
+**Status** fixed · **Area** store semantics · found 2026-10-09 by `Redis.ModelSpec`
+
+Liveness is now decided in one place. `Redis.Data.Store.get` takes the current time and
+returns `Nothing` for a record that has expired, and `RedisStore` is opaque, so every
+workflow reads through it. `Get` and `RPush` no longer check `isLive` themselves. An
+expired string is therefore absent to `RPUSH`, which creates a fresh list, as Redis does.
+
+Pinned by `Redis.ModelSpec`: the rows "treats an expired string as absent for RPUSH" and
+"does not resurrect an expired key by appending to it", and the property "answers every
+generated sequence the way the model does". Making `Store.get` skip the filter fails 9 of
+`ModelSpec`'s 19 examples, since `Get` no longer has a check of its own either.
+
+---
+
+## 15. Our expiry integer grammar is looser than Redis's
+
+**Status** open · **Area** command parsing · found 2026-10-09 by `Redis.DifferentialSpec`
+
+`pInt` is `BC.readInt`, which is a *prefix* parser and has its own idea of which integers
+exist. Two mechanisms, both reachable, both producing silent wrong answers rather than
+errors.
+
+**Observed** — ours, then redis 8.10.1
+
+```
+SET k v EX "1 "   ->  +OK                              redis: ERR value is not an integer
+SET k v EX 1.5    ->  +OK                              redis: ERR value is not an integer
+SET k v EX 0x10   ->  ERR invalid expire time          redis: ERR value is not an integer
+SET k v EX -0     ->  ERR invalid expire time          redis: ERR value is not an integer
+SET k v EX 007    ->  +OK                              redis: ERR value is not an integer
+```
+
+The first two are prefix acceptance: `readInt "1 "` is `Just (1, " ")` and `pInt` throws the
+remainder away, so the command succeeds with a TTL the client never asked for. `0x10` is the
+same mechanism landing on `0`, which then fails the `> 0` check and reports the wrong error.
+
+The last two are different: `readInt` consumes the *whole* token and still disagrees with
+Redis, whose `string2ll` rejects `-0`, a leading `+`, and leading zeros.
+
+**Impact** `SET k v EX "1 "` is the bad one — a trailing space from a hand-built client
+command silently becomes a one-second TTL instead of an error. The key is gone a second
+later and nothing said so.
+
+**Fix direction** `pInt` should require the whole token and match Redis's grammar: optional
+`-`, then digits with no leading zero unless the number *is* zero, no `+`, no whitespace,
+range-checked against `Int64`. That is also gap #5's fix, so the two are one change.
+
+---
+
+## 16. A value error pre-empts a grammar error
+
+**Status** open · **Area** command parsing · found 2026-10-09 by `Redis.DifferentialSpec`
+
+Redis parses a `SET` option list for grammatical validity **in full**, and only then
+validates the values it collected. So a syntax problem anywhere in the list wins, regardless
+of position.
+
+**Observed** — redis 8.10.1
+
+```
+SET k v PX 0               ->  ERR invalid expire time in 'set' command
+SET k v KEEPTTLX           ->  ERR syntax error
+SET k v PX 0 KEEPTTLX      ->  ERR syntax error
+SET k v KEEPTTLX PX 0      ->  ERR syntax error
+```
+
+Ours answers `ERR invalid expire time in 'set' command` for both of the last two.
+`pSetOptions` validates *during* the scan: `many` stops at the unrecognised token, the
+collected expiry is checked immediately, and the error escapes before `eof` can object to
+what is left over.
+
+**Impact** Cosmetic in isolation, and it matters because it is the clearest statement of a
+structural difference: Redis's parse and validate are two phases, ours are interleaved. The
+same interleaving is behind gaps #15 and #17.
+
+**Fix direction** Collect options first, consume to `eof`, validate last. It is a change in
+*where* the check happens, not in the check.
+
+---
+
+## 17. An option's value is not consumed positionally
+
+**Status** open · **Area** command parsing · found 2026-10-09 by `Redis.DifferentialSpec`
+
+Redis's option loop takes the token after `EX`/`PX` as that option's value whatever it looks
+like, advances two, and validates nothing until the loop ends.
+
+**Observed** — redis 8.10.1
+
+```
+SET a v PX PX            ->  ERR value is not an integer   (the value is the token "PX")
+SET a v PX PX PX 41605   ->  OK                            (second PX wins; only 41605 checked)
+SET a v EX EX 5          ->  ERR syntax error              (EX ate "EX"; "5" is then unknown)
+SET a v PX 1000 PX       ->  ERR syntax error              (trailing PX has no value to eat)
+```
+
+Ours answers `ERR syntax error` to all four. `pSetOptions` is
+`many (choice [pName "EX" >> pInt, pName "PX" >> pInt])`, so when `pInt` fails the whole
+alternative fails, `many` backtracks as though no option were there, and `eof` rejects the
+leftovers.
+
+Note the second line: Redis accepts it. This is the *same* "last expiry wins, and only the
+last is validated" rule that `pSetOptions` already implements for `EX -1 EX 6` — it simply
+also applies when the discarded value happens to be an option name.
+
+**Impact** We reject a command Redis accepts. Low practical risk, high diagnostic value: it
+pins down that the difference is commitment, not validation. Redis commits to an option as
+soon as its *name* matches; we only commit once its value parses.
+
+**Fix direction** Commit on the name. `pName "PX" >> withError NotAnInteger pInt` is not
+enough on its own — the error has to survive `many`, which today it does not (gap #8).
+
+---
+
+## 18. List order is unobservable, and therefore untested
+
+**Status** open · **Area** testing · found 2026-10-09 by a hand mutation audit
+
+No command in the project reads a list back. `RPUSH` replies with a length, `GET` on a list
+is `WRONGTYPE`, and there is no `LRANGE`, `LPOP` or `LLEN`. So nothing anywhere observes the
+*order* of list elements.
+
+**Observed** — a mutation swapping `RPUSH`'s append for a prepend:
+
+```haskell
+-- lib/Redis/Workflows/RPush.hs
+RedisListValue ((toRedisStringValue <$> values) <> elems)   -- was: elems <> (… values)
+```
+
+survives the conformance table, the stateful model, the differential explorer against the
+real server, and the serialization suite. Every reply is byte-identical.
+
+**Impact** None today, by definition — unobservable behaviour cannot be wrong from outside.
+It becomes real the moment a read command lands, and at that point the bug would be *older*
+than the test that finds it, which is the worst time to discover it.
+
+**Why it is logged rather than fixed.** The fix is not a test; it is `LRANGE`. The model in
+`Redis.ModelSpec` already stores elements in order, so adding the command closes this gap
+without new test machinery. Logged so that "the model suite is green" is not mistaken for
+"lists are correct".

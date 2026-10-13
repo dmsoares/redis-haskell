@@ -1,5 +1,38 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+{- | The RESP codec: tables of cases, plus one claim about all of them.
+
+* __Rungs 0 and 2__ — examples, and a property
+* __Question__ — does the wire format round-trip, and does it reject what the
+  spec forbids?
+* __Oracle__ — the RESP2 specification, read and written down here
+* __Contract__ — always green
+* __Industry pattern__ — property-based testing; @fromBytes . toBytes@ is the
+  classic /inverse pair/ (also called round-trip) property
+
+The ladder of specs these rungs refer to:
+
+> architecture/research/spec-driven-development.md   section 1
+
+__Why both rungs, for one module.__ The property says @fromBytes (toBytes r)@ is
+@Just r@ for every @r@ the generator makes. That is rung 2: it finds cases nobody
+thought of. But it can only speak about values the generator produces, so it says
+nothing about /rejection/ — a truncated frame, a bad length, an unknown type
+byte. Those are enumerated by hand below, at rung 0. Neither rung covers the
+other.
+
+__The property's domain is narrower than the type.__ @SimpleString@ accepts any
+@ByteString@, but RESP2 forbids CR and LF in the body, so the type admits values
+with no wire form and the round-trip equation is simply false for them. The
+generator restricts itself with @noCRLF@ and the shrinker re-applies it, which
+makes the property true and meaningful.
+
+The cost is worth being explicit about: __the rule now lives only in test code.__
+Nothing stops the library constructing @SimpleString "a\\r\\nb"@, and @toBytes@ will
+happily emit two frames for it. So this file is evidence that the library
+round-trips values which /happen to/ satisfy the invariant, not that it maintains
+it. See @known-gaps.md@ #1.
+-}
 module Resp.SerializationSpec (spec) where
 
 import Data.ByteString (ByteString)

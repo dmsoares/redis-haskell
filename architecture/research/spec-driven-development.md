@@ -76,6 +76,76 @@ what a refinement type buys, at a weaker strength and zero marginal cost. Your 7
 measurement is, read this way, a measurement of *how much of the system is already
 specified*.
 
+### The ladder has traffic in both directions
+
+Added 2026-10-09, after building the three suites. The table above reads like a staircase
+you climb once. It isn't. Traffic runs both ways, and **each direction has a name in
+industry — just not the same industry.**
+
+**Up: discover drift.** A higher rung searches a space you cannot enumerate, so it finds
+behaviour nobody wrote down. That's the direction everything above assumes.
+
+**Down: reify the finding as an example.** Once a rung-2 or rung-3 search finds something,
+the useful permanent artefact is a rung-0 row. Random search tells you a bug *exists*; an
+enumerated example is what stops it coming back, runs in microseconds, and reads as
+documentation.
+
+Neither direction is novel. The surprise is that the two halves are practised by
+*different communities*, with no shared vocabulary:
+
+| direction | community | what they call it |
+|---|---|---|
+| rung 2/3 → 0 | property-based testing | pinning the shrunk counterexample; Hypothesis's **example database** + `@example` |
+| rung 2/3 → 0 | fuzzing | the **crash corpus** / regression corpus (OSS-Fuzz replays it forever) |
+| 0 → 3, holding the line | browser engineering | **expectations files** — Chromium's `TestExpectations` over web-platform-tests |
+| 0 → 3, holding the line | linting / static analysis | the **ratchet file** — Notion's per-rule violation counts, auto-decremented, CI blocks new ones |
+| 0 → 3, holding the line | differential-testing research | the **known-divergences file**, "with a deliberately narrow predicate so it cannot silently hide a regression" |
+
+The compiler-fuzzing surveys state our exact problem in their own words: the hard part of
+differential testing is deciding whether a difference is "an actual bug, an artifact of
+undefined behavior, or a benign difference permitted by a specification gap."
+
+**What this project does with that.** `DifferentialSpec`'s `baseline` is an expectations
+file; `ConformanceSpec` is where its entries go when fixed. The migration *is* the record
+of the fix — without it, fixing a divergence would just mean deleting a line, and nothing
+would stop the regression.
+
+Three ways we differ from the prior art, all deliberate:
+
+1. **Classes, not instances.** Chromium lists test names and Notion counts violations per
+   rule per file; our baseline holds five constructors, each naming a *root cause*.
+   Instances grow with inputs; classes grow with understanding, so fixing one divergence
+   deletes one line rather than hundreds. The cost is needing a classifier at all.
+2. **Manual, not automated.** Notion's ratchet auto-decrements in a pre-commit hook.
+   Automation is right for thousands of mechanical lint instances and wrong here: five
+   entries that each encode a decision about Redis's semantics should cost a thought.
+3. **The oracle has its own spec.** This is the unusual one. The literature treats oracle
+   noise as a *filtering* problem and builds cleverer filters — AccuOracle's four-layer
+   progressive filter, SmartOracle's agentic arbitration. No source found writes a
+   conformance table *for its own filter*. `DifferentialSpec`'s 17 rung-0 rows over
+   `triage` are exactly that, and they exist because a classifier that returned a known
+   class for everything would keep the suite green forever. Generalised: **at rung 3 the
+   oracle is itself code complex enough to need a rung-0 spec.**
+
+**The downward move is manual in Haskell.** Hypothesis automates it; nothing in
+`lts-23.18` does. That is measured rather than assumed — see §5, "There is no example
+database in the Haskell ecosystem", which also records why a seed is a weaker pin than a
+stored input, and where it is not.
+
+**Nobody appears to name the round trip.** The closest is the *"yo-yo effect"* in formal
+refinement — going back up to rewrite a specification when a lower level reveals a problem
+— but that is about specification *layers*, not test rungs. Putting both directions on one
+ladder is a synthesis, not an invention: every part is standard, only the framing is ours.
+
+**Sources**
+
+- [Chromium web test expectations](https://chromium.googlesource.com/chromium/src/+show/HEAD/docs/testing/web_test_expectations.md)
+- [Notion — how we evolved our ratcheting system](https://www.notion.com/blog/how-we-evolved-our-code-notions-ratcheting-system-using-custom-eslint-rules)
+- [Hypothesis — replaying failures](https://hypothesis.readthedocs.io/en/latest/tutorial/replaying-failures.html) and [the example database](https://hypothesis.readthedocs.io/en/hypothesis-python-4.57.1/database.html)
+- [A Survey of Modern Compiler Fuzzing](https://arxiv.org/pdf/2306.06884)
+- [SmartOracle — mitigating noise in differential oracles](https://arxiv.org/pdf/2601.15074)
+- [Using Formal Specifications to Support Testing](https://bura.brunel.ac.uk/bitstream/2438/1871/1/landscapes_final.pdf) (the "yo-yo effect")
+
 ---
 
 ### Rung 1 — Machine-readable interface specs
@@ -503,7 +573,7 @@ property-shaped code in the repo. Candidate properties, in Hughes' classes:
   found it for you, and it's the one to write first as a demonstration to yourself that
   rung 2 pays.
 - *Prefix-closure.* For a well-formed frame `b` and **every** proper prefix `p`, the parser
-  must classify `p` as *incomplete* — never malformed, never successful. This is the actual
+  must triage `p` as *incomplete* — never malformed, never successful. This is the actual
   specification of your `fullQuery` read loop's termination condition, and it's a property
   no example-based test will ever cover exhaustively.
 - *No false incomplete.* Appending arbitrary bytes to a complete frame must not turn
@@ -623,6 +693,8 @@ You're on `lts-23.18` (GHC 9.8.4). Checked against Stackage:
 | `quickcheck-state-machine` | 0.10.1 | **stateful + parallel**; one of only four libraries anywhere that does both |
 | `dejafu` | 2.4.0.7 | systematic concurrency testing, first-class STM |
 | `tasty-quickcheck` / `hspec` | 0.11 / 2.11.12 | runners |
+| `hspec-golden` / `tasty-golden` | 0.2.2.0 / 2.3.5 | golden (approval) files — rung 0 held in a file rather than in source |
+| `hspec-golden-aeson` | 0.9.0.0 | golden files generated *from* `Arbitrary`; see below |
 
 **Not in the LTS — `extra-deps` required:**
 
@@ -640,6 +712,89 @@ integrated shrinking does not automatically win. The received wisdom on this is 
 The tradeoff you're accepting is writing `shrink` by hand. For a recursive type like `Resp`
 that's real work, but it's also the kind of work that teaches you what shrinking is doing —
 which, for a learning project, is the point.
+
+### There is no example database in the Haskell ecosystem
+
+Checked 2026-10-09, prompted by the downward direction in §1. Python's Hypothesis
+**persists failing inputs**: a failure is written to a local example database and
+*replayed before new generation* on every later run, and the `@example` decorator promotes
+one into source permanently. That is the down-the-ladder move, automated inside the tool.
+
+**Nothing in `lts-23.18` does this.** All 23 packages in the snapshot whose name mentions
+QuickCheck were checked, and none of them stores a counterexample — they are generators,
+law bundles, runner integrations, and in one case (`quickcheck-state-machine`) stateful
+testing. Neither `hedgehog` nor `falsify` has it either. `hedgehog-corpus` sounds like a
+failure corpus and is not: its synopsis is "collection of strings for testing things",
+i.e. sample data *for* generators.
+
+What is available, closest first:
+
+**1. `hspec --rerun --failure-report=FILE`.** Already in the toolchain. The file it writes
+is a `Show`n record:
+
+```
+FailureReport { failureReportSeed = 341725608, failureReportMaxSuccess = 100
+              , failureReportMaxSize = 100, failureReportMaxDiscardRatio = 10
+              , failureReportPaths = [(["Redis.Store",…],"treats an expired string as absent for RPUSH"), …] }
+```
+
+So it persists **the seed, the QuickCheck arguments, and which specs failed**. Not the
+counterexample. It replays a random *schedule*, not an input.
+
+**2. `hspec-golden-aeson`.** The downward move, automated, for one narrow job. Its golden
+file holds a seed plus the serialized value; later runs "use a seed from the golden file to
+create an arbitrary value of a type and check if the serialization matches the file." That
+is genuinely "freeze a generated example as a permanent artefact" — scoped to JSON
+serialization drift, but the right shape.
+
+**3. Seed replay.** `QuickCheck`'s `replay` argument, `tasty-quickcheck`'s
+`--quickcheck-replay`, `hspec`'s `--seed`, hedgehog's `recheck Size Seed`. Reproduces a
+run, not an input.
+
+**What is actually missing** is that Hypothesis stores the *choice sequence* — the decisions
+the generator made — so it replays an input rather than a schedule, and survives a changed
+generator rather than silently pointing somewhere else.
+
+#### A measurement, which refuted the obvious claim
+
+The expected argument is "seed replay is fragile: change the generator and the seed points
+at different inputs". Tested on `Redis.ModelSpec`:
+
+```
+seed 42, before                                 [Set "a" "w" (Just (Px 1000)),Advance 1100,RPush "a" [""]]
+added one unused element to genValue's pool, rebuilt
+seed 42, after                                  [Set "a" "w" (Just (Px 1000)),Advance 1100,RPush "a" [""]]
+```
+
+Identical. **Shrinking converged**, so for an easily-reached bug a seed is a sturdier pin
+than the argument suggests.
+
+It breaks on the *rare* ones, which is the case that matters. The `SET a v PX PX PX 41605`
+divergence surfaced at **test 1435 of 3000 on seed 10**; that needle depends on the exact
+generation schedule, so any edit to `Redis.FrameGen` moves it. Which is exactly why that
+finding was written into `DifferentialSpec`'s `baseline`, `known-gaps.md` #17 and a
+`triageSpec` row — rather than a comment saying "see seed 10".
+
+#### The consequence
+
+**In Haskell the rung-3 → rung-0 migration is manual, so it has to be deliberate.** In
+Python a weaker version of it is free. That is not a reason to envy Python: a database
+replays whatever it caught, whereas writing the row by hand forces you to *name the root
+cause*, which is what keeps `baseline` six entries long instead of six hundred (§1).
+
+**If a small one is ever wanted**, the pieces are present: `Op` derives `Show` and `Read`
+is a line away, `boundarySpec`'s rows are already hand-written pinned cases, and
+`forAll (elements pinned)` beside `genOps` is the whole mechanism — roughly 30 lines, after
+which appending a shrunk counterexample becomes mechanical. Not worth it at six baseline
+entries; the natural shape if the gap list grows.
+
+**Sources**
+
+- [Hypothesis — replaying failures](https://hypothesis.readthedocs.io/en/latest/tutorial/replaying-failures.html) and [the example database](https://hypothesis.readthedocs.io/en/hypothesis-python-4.57.1/database.html)
+- [`hspec-golden-aeson`](https://hackage.haskell.org/package/hspec-golden-aeson) (the quoted sentence is from its description)
+- [`hedgehog-corpus`](https://hackage.haskell.org/package/hedgehog-corpus) · [`falsify`](https://hackage.haskell.org/package/falsify)
+- [LTS 23.18 package set](https://www.stackage.org/lts-23.18/cabal.config) — the list the package check was run against
+- The `FailureReport` dump and the seed-42 measurement were produced in this repo, not quoted.
 
 ---
 

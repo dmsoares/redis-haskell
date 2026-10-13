@@ -1,36 +1,39 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-{- | A real @redis-server@, owned and driven by the test suite.
+{- | The __reference implementation__: a real @redis-server@, owned and driven by
+the test suite.
 
-This module exists to keep the genuinely awkward parts of differential testing in
-one place -- process lifecycle, state reset between runs, and deciding where one
-reply ends -- so the properties that use it stay readable.
+That is the term the differential-testing literature uses for the side you trust,
+and it is deliberately /not/ called a model. At rung 3 a "model" is the abstract
+one — here, @Redis.ModelSpec.step@. This module is the opposite kind of oracle:
+the full, real thing, which cannot be wrong about Redis but can only be asked
+what the wire allows.
 
-'ModelServer' is deliberately __opaque__. The only way to obtain one is
-'withModelServer', so holding one is evidence that a live, ready server exists;
-and because the socket is not reachable, 'runSequence' is the only way to talk to
-it. That matters: a caller with the raw socket could skip the state reset, the
-timeout, or the frame-completeness loop, which is every mistake this module was
-written to prevent.
+Not a rung itself — this is the plumbing that makes rung 3 possible. It holds the
+parts of differential testing that are merely awkward (starting and stopping a
+process, resetting its state, deciding where one reply ends) so that
+'Redis.DifferentialSpec' can stay about the question it asks.
 
-Two things are deliberately __not__ shared with the code under test:
+__The handle is opaque on purpose.__ 'withReference' is the only way to get a
+'Reference', so holding one proves a server is up; and the socket is
+unreachable, so 'runSequence' is the only way to talk to it. A caller with the
+raw socket could skip the state reset, the timeout or the frame-completeness
+loop — which is every mistake this module exists to prevent.
 
-* requests are encoded by 'encodeCommand' rather than @Resp.toBytes@. If
-  @toBytes@ were wrong we would send malformed bytes to both implementations and
-  they might agree -- masking the very bug we are hunting.
-
-* reply boundaries are found by 'completeFrame' rather than @Resp.fromBytes@.
-  An oracle that frames replies with the parser under test can be misled by a bug
-  in it.
-
-Both are small enough that duplicating them is cheaper than the coupling.
+__Two things are deliberately not shared with the code under test.__ Requests are
+encoded by 'encodeCommand', not @Resp.toBytes@; reply boundaries are found by
+'completeFrame', not @Resp.fromBytes@. The reason is the same for both: an oracle
+that uses the code under test can be fooled by a bug in it. A broken @toBytes@
+would send the /same/ malformed frame to both implementations, which might then
+agree and hide the bug. Both functions are small enough that duplicating them is
+cheaper than the coupling.
 -}
-module Redis.ModelServer (
+module Redis.Reference (
     -- * Handle
-    ModelServer,
-    withModelServer,
-    modelAvailable,
+    Reference,
+    withReference,
+    referenceAvailable,
 
     -- * Talking to it
     Reply (..),
@@ -76,9 +79,9 @@ import System.Process (
 import System.Timeout (timeout)
 
 -- | An opaque handle to a running server. See the module header for why.
-data ModelServer = ModelServer
-    { msSocket :: TCP.Socket
-    , msLeftover :: IORef ByteString
+data Reference = Reference
+    { refSocket :: TCP.Socket
+    , refLeftover :: IORef ByteString
     }
 
 {- | What came back for one command.
@@ -99,20 +102,19 @@ replyTimeoutMicros :: Int
 replyTimeoutMicros = 1000000
 
 -- | Is a model available at all? Suites use this to skip rather than fail.
-modelAvailable :: IO Bool
-modelAvailable = isJust <$> findExecutable "redis-server"
+referenceAvailable :: IO Bool
+referenceAvailable = isJust <$> findExecutable "redis-server"
 
 {- | Start a server, hand it over, shut it down.
 
-Spawned on an __ephemeral__ port rather than a fixed one. A fixed port means a
-stray server from an earlier run silently answers your queries with its own
-accumulated state -- which has happened, cost an afternoon, and made @--seed@
-reproductions stop reproducing. It also means an orphaned server (from, say, a
-@timeout@-killed test runner, which no @bracket@ can defend against) is harmless:
-the next run picks a different port and this one persists nothing.
+Spawned on an __ephemeral__ port rather than a fixed one, for two reasons. A
+fixed port lets a stray server answer the suite's queries with its own
+accumulated state, silently, which breaks @--seed@ reproduction. And it makes an
+orphaned server harmless: no @bracket@ can defend against a @timeout@-killed test
+runner, but the next run picks a different port, and this one persists nothing.
 -}
-withModelServer :: (ModelServer -> IO a) -> IO a
-withModelServer action = do
+withReference :: (Reference -> IO a) -> IO a
+withReference action = do
     mExe <- findExecutable "redis-server"
     exe <- maybe (fail "redis-server is not on PATH -- run inside `nix develop`") pure mExe
     p <- freePort
@@ -120,7 +122,7 @@ withModelServer action = do
         waitUntilListening p attempts
         TCP.connect "127.0.0.1" (show p) $ \(sock, _) -> do
             leftover <- newIORef BS.empty
-            action (ModelServer sock leftover)
+            action (Reference sock leftover)
   where
     attempts = 150 :: Int
 
@@ -168,15 +170,15 @@ invisible and poisonous: our own store is rebuilt per run while this server is
 long-lived, so without a reset, run 12 compares a fresh store against a model
 that still remembers runs 1-11.
 -}
-runSequence :: ModelServer -> [[ByteString]] -> IO [Reply]
-runSequence ms frames = do
-    _ <- exchange ms ["FLUSHALL"]
-    traverse (exchange ms) frames
+runSequence :: Reference -> [[ByteString]] -> IO [Reply]
+runSequence ref frames = do
+    _ <- exchange ref ["FLUSHALL"]
+    traverse (exchange ref) frames
 
-exchange :: ModelServer -> [ByteString] -> IO Reply
-exchange ms ts = do
-    TCP.send (msSocket ms) (encodeCommand ts)
-    readOneReply ms
+exchange :: Reference -> [ByteString] -> IO Reply
+exchange ref ts = do
+    TCP.send (refSocket ref) (encodeCommand ts)
+    readOneReply ref
 
 {- | Read exactly one reply, buffering whatever arrived beyond it.
 
@@ -184,18 +186,18 @@ The leftover buffer is not paranoia: a @recv@ can return bytes belonging to the
 next reply, and discarding them would shift every subsequent reply by one -- a
 failure that looks like a pile of unrelated divergences.
 -}
-readOneReply :: ModelServer -> IO Reply
-readOneReply ms = readIORef (msLeftover ms) >>= go
+readOneReply :: Reference -> IO Reply
+readOneReply ref = readIORef (refLeftover ref) >>= go
   where
     go buf = case completeFrame buf of
         Just n -> do
-            writeIORef (msLeftover ms) (BS.drop n buf)
+            writeIORef (refLeftover ref) (BS.drop n buf)
             pure (Reply (BS.take n buf))
         Nothing -> do
-            mChunk <- timeout replyTimeoutMicros (TCP.recv (msSocket ms) 4096)
+            mChunk <- timeout replyTimeoutMicros (TCP.recv (refSocket ref) 4096)
             case mChunk of
-                Nothing -> writeIORef (msLeftover ms) buf >> pure NoReply
-                Just Nothing -> writeIORef (msLeftover ms) buf >> pure Closed
+                Nothing -> writeIORef (refLeftover ref) buf >> pure NoReply
+                Just Nothing -> writeIORef (refLeftover ref) buf >> pure Closed
                 Just (Just chunk) -> go (buf <> chunk)
 
 {- | Encode a command the way a client does: an array of bulk strings.
