@@ -11,9 +11,9 @@ import Redis.Data.Command (GetPayload (GetPayload))
 import Redis.Data.DataType (RedisValue (RedisStringValue))
 import Redis.Data.Error (RedisError)
 import qualified Redis.Data.Error as RedisError
-import Redis.Data.Record (RedisRecord (RedisRecord, value), isLive)
+import Redis.Data.Record (RedisRecord (RedisRecord, value))
 import qualified Redis.Data.Store as Store
-import Redis.Workflows.Get.Data (Error (..), Input (Input, key), Key (Key), Reply (..))
+import Redis.Workflows.Get.Data (Input (Input, key), Key (Key), Reply (..))
 
 data Env = Env {receivedAt :: UTCTime, getKey :: Store.Key -> IO (Maybe RedisRecord)}
 
@@ -25,17 +25,9 @@ deserializeInput (GetPayload key) = Input (Key key)
 
 execute :: (MonadReader Env m, MonadError RedisError m, MonadIO m) => Input -> m Reply
 execute Input{key = Key k} = do
-    now <- asks receivedAt
     get <- asks getKey
     mRecord <- liftIO $ get k
-    handleResult $ do
-        record@RedisRecord{value} <- maybe (Left NotFound) Right mRecord
-        case (isLive now record, value) of
-            (True, RedisStringValue str) -> Right str
-            (True, _) -> Left WrongType
-            (False, _) -> Left DeadValue
-  where
-    handleResult (Right str) = pure $ Value str
-    handleResult (Left DeadValue) = pure Nil
-    handleResult (Left NotFound) = pure Nil
-    handleResult (Left WrongType) = throwError $ RedisError.WrongType
+    case mRecord of
+        Nothing -> pure Nil
+        Just RedisRecord{value = RedisStringValue str} -> pure $ Value str
+        Just _ -> throwError $ RedisError.WrongType

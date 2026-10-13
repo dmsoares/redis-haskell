@@ -15,11 +15,6 @@ data Reply
     | Value ByteString
     deriving (Show)
 
-data Error
-    = DeadValue
-    | WrongType
-    | NotFound
-
 -- Serialization
 instance ToResp Reply where
     toResp Nil = NullBulkString

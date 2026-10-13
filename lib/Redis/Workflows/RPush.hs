@@ -49,4 +49,5 @@ execute Input{key = Key key', values} = do
     setListRecord setter key record@RedisRecord{R.value = (RedisListValue list)} = do
         _ <- liftIO $ setter key record
         pure $ OK (length list)
+    setListRecord _ _ _ = throwError WrongType
     toRedisStringValue (Value v) = RedisStringValue v

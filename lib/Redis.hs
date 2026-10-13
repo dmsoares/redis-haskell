@@ -7,7 +7,8 @@ import Control.Monad.Reader (ReaderT (runReaderT))
 import Data.Time (UTCTime)
 
 import Redis.Data.Command (Command (..), fromResp)
-import Redis.Data.Store (RedisStore (..))
+import Redis.Data.Store (RedisStore)
+import qualified Redis.Data.Store as Store
 import Redis.Store (newRedisStore)
 import qualified Redis.Workflows.Echo as Echo
 import qualified Redis.Workflows.Get as Get
@@ -21,15 +22,15 @@ reply = dispatch
 
 -- Dispatches to specific workflow
 dispatch :: UTCTime -> RedisStore -> Resp -> IO Resp
-dispatch receivedAt RedisStore{redisSet, redisGet} query =
+dispatch receivedAt store query =
     case fromResp query of
         Left e -> runPure $ e
         Right cmd -> case cmd of
             Ping -> runPure Ping.workflow
             Echo payload -> runPure $ Echo.workflow payload
-            Set payload -> runEffectful (Set.Env receivedAt redisSet) (Set.workflow payload)
-            Get payload -> runEffectful (Get.Env receivedAt redisGet) (Get.workflow payload)
-            RPush payload -> runEffectful (RPush.Env receivedAt redisGet redisSet) (RPush.workflow payload)
+            Set payload -> runEffectful (Set.Env receivedAt (Store.set store)) (Set.workflow payload)
+            Get payload -> runEffectful (Get.Env receivedAt (Store.get receivedAt store)) (Get.workflow payload)
+            RPush payload -> runEffectful (RPush.Env receivedAt (Store.get receivedAt store) (Store.set store)) (RPush.workflow payload)
   where
     runPure :: (ToResp a) => a -> IO Resp
     runPure = pure . toResp

@@ -3,7 +3,7 @@
 
 module Redis.Store where
 
-import Redis.Data.Store (RedisStore (..))
+import Redis.Data.Store (RedisStore, mkRedisStore)
 
 import Control.Concurrent.STM (atomically)
 import qualified StmContainers.Map as StmMap
@@ -12,8 +12,8 @@ newRedisStore :: IO RedisStore
 newRedisStore = do
     store <- atomically StmMap.new
 
-    let set = \key record -> atomically $ StmMap.insert record key store
+    let set' = \key record -> atomically $ StmMap.insert record key store
 
-    let get = \key -> atomically $ StmMap.lookup key store
+    let get' = \key -> atomically $ StmMap.lookup key store
 
-    pure $ RedisStore set get
+    pure $ mkRedisStore set' get'
