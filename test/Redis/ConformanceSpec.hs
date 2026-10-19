@@ -119,7 +119,7 @@ singles =
       (["SET", "k", "v", "EX", "1", "PX", "1000"], syntaxError)
     , (["SET", "k", "v", "PX", "1000", "EX", "1"], syntaxError)
     , -- Redis's genuinely subtle rule: repeated EX is accepted, and only the
-      -- *last* one is validated. These two rows differ in order alone and must
+      -- \*last* one is validated. These two rows differ in order alone and must
       -- stay that way; collapsing them to "any invalid value errors" is wrong.
       (["SET", "k", "v", "EX", "-1", "EX", "6"], "+OK\r\n")
     , (["SET", "k", "v", "EX", "6", "EX", "-1"], invalidExpireTime)
@@ -130,6 +130,9 @@ singles =
     , (["RPUSH", "l", "a"], ":1\r\n")
     , (["RPUSH", "l", "a", "b"], ":2\r\n")
     , (["rpush", "l", "a"], ":1\r\n")
+    , -- If key does not exist, return empty array
+      (["LRANGE", "l", "0", "1"], "*0\r\n")
+    , (["LRANGE", "l", "x", "x"], notAnInteger)
     , -- The command name is case-insensitive; the *argument* is not, and must
       -- survive byte for byte.
       (["BOGUS"], "-ERR unknown command 'BOGUS'\r\n")
@@ -210,6 +213,7 @@ arities =
     , ("GET", 2)
     , ("SET", -3)
     , ("RPUSH", -3)
+    , ("LRANGE", 4)
     ]
 
 {- | Every token count the arity table says must be rejected.
@@ -253,3 +257,6 @@ invalidExpireTime = "-ERR invalid expire time in 'set' command\r\n"
 
 wrongType :: ByteString
 wrongType = "-WRONGTYPE Operation against a key holding the wrong kind of value\r\n"
+
+notAnInteger :: ByteString
+notAnInteger = "-ERR value is not an integer or out of range\r\n"

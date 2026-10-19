@@ -41,6 +41,7 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8
 import qualified Data.Char as Char
 import Test.QuickCheck (
+    Arbitrary (arbitrary),
     Gen,
     choose,
     elements,
@@ -113,6 +114,7 @@ genWellFormed =
         , (\k -> ["GET", k]) <$> genKey
         , (\k v o -> ["SET", k, v] <> o) <$> genKey <*> genValue <*> genSetOptions
         , (\k vs -> ["RPUSH", k] <> vs) <$> genKey <*> listOf1 genValue
+        , (\k start stop -> ["LRANGE", k, start, stop]) <$> genKey <*> genInt <*> genInt
         ]
 
 {- | A tiny key space, so that collisions between commands in a run are the
@@ -122,13 +124,15 @@ last-write-wins, type conflicts and expiry overlap all likely.
 genKey :: Gen ByteString
 genKey = elements ["a", "b", "c"]
 
--- | Short, printable, sometimes empty. Binary values are @Resp@'s problem, and
--- the round-trip property in @Resp.SerializationSpec@ already owns them.
+{- | Short, printable, sometimes empty. Binary values are @Resp@'s problem, and
+the round-trip property in @Resp.SerializationSpec@ already owns them.
+-}
 genValue :: Gen ByteString
 genValue = elements ["", "v", "v2", "xyz", "0", "-1"]
 
--- | Zero or one expiry option. Two is reachable only by 'perturb' duplicating
--- one, which is the interesting way to reach it.
+{- | Zero or one expiry option. Two is reachable only by 'perturb' duplicating
+one, which is the interesting way to reach it.
+-}
 genSetOptions :: Gen [ByteString]
 genSetOptions =
     frequency
@@ -136,6 +140,9 @@ genSetOptions =
         , (1, (\n -> ["EX", n]) <$> genExpiry 1 100)
         , (1, (\n -> ["PX", n]) <$> genExpiry 1000 100000)
         ]
+
+genInt :: Gen ByteString
+genInt = C8.pack . show <$> (arbitrary :: Gen Int)
 
 {- | An expiry value that is either comfortably long-lived or plainly invalid,
 and never briefly valid.

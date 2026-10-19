@@ -3,20 +3,21 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Redis.Data.Command where
 
 import Control.Applicative (Alternative (..))
-import Control.Applicative.Combinators (choice)
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as BC
+import qualified Data.ByteString.Char8 as C8
 import qualified Data.Char as Char
 import qualified Data.List as List
-import Data.Text (Text)
 import Prelude hiding (fail)
 
+import Control.Applicative.Combinators (choice)
+import qualified Data.ByteString as BS
 import Redis.Data.Error (RedisError (InvalidExpireTimeInSetCommand, NotAnInteger, SyntaxError, UnknownCommand, WrongNumberOfArguments))
 import Resp (Resp (..))
 
@@ -26,6 +27,7 @@ data Command
     | Set SetPayload
     | Get GetPayload
     | RPush RPushPayload
+    | LRange LRangePayload
     deriving (Show)
 
 newtype EchoPayload = EchoPayload {message :: ByteString}
@@ -51,6 +53,13 @@ newtype GetPayload = GetPayload
 data RPushPayload = RPushPayload
     { key :: ByteString
     , values :: [ByteString]
+    }
+    deriving (Show)
+
+data LRangePayload = LRangePayload
+    { key :: ByteString
+    , start :: Int
+    , stop :: Int
     }
     deriving (Show)
 
@@ -85,6 +94,7 @@ pCommand = do
         "get" -> pGet
         "set" -> pSet
         "rpush" -> pRPush
+        "lrange" -> pLRange
         _ -> fail $ UnknownCommand t
 
 token :: Parser ByteString
@@ -97,64 +107,91 @@ eof = Parser $ \case
     [] -> Right ((), [])
     _ -> Left SyntaxError
 
+lookahead :: Parser a -> Parser a
+lookahead p = Parser $ \str ->
+    case runCmd p str of
+        Left err -> Left err
+        Right (res, _) -> Right (res, str)
+
+arityGuard :: Maybe Int -> Maybe Int -> ByteString -> Parser ()
+arityGuard minArgs maxArgs name = lookahead $ do
+    tks <- many token
+    let l = length tks
+    let valid = case (minArgs, maxArgs) of
+            (Just min', Just max') -> l >= min' && l <= max'
+            (Just min', _) -> l >= min'
+            (_, Just max') -> l <= max'
+            _ -> True
+    if valid then pure () else fail $ WrongNumberOfArguments name
+
 withError :: RedisError -> Parser a -> Parser a
 withError e p = Parser $ \bs ->
     case runCmd p bs of
         Left _ -> Left e
         r -> r
 
-pInt :: Parser Int
-pInt = do
+pDecimal :: Parser Int
+pDecimal = do
     t <- token
-    maybe
-        (fail NotAnInteger)
-        (pure . fst)
-        (BC.readInt t)
+    maybe (fail NotAnInteger) (pure . fst) $ do
+        n <- guardLiteral t
+        C8.readInt n
+  where
+    guardLiteral bs
+        | BS.all (`BS.elem` literals) bs = Just bs
+        | otherwise = Nothing
+    literals = C8.pack $ '-' : concatMap show [0 :: Int .. 9]
 
 pPing :: Parser Command
 pPing = pure Ping
 
 pEcho :: Parser Command
 pEcho = do
-    msg <- withE token
-    withE eof
+    _ <- arityGuard (pure 1) (pure 1) "echo"
+    msg <- token
     pure $ Echo (EchoPayload msg)
-  where
-    withE = withError (WrongNumberOfArguments "echo")
 
 pGet :: Parser Command
 pGet = do
-    k <- withE token
-    withE eof
+    _ <- arityGuard (pure 1) (pure 1) "get"
+    k <- token
     pure $ Get (GetPayload k)
-  where
-    withE = withError (WrongNumberOfArguments "get")
 
 pSet :: Parser Command
 pSet = do
-    (k, v) <- withE $ liftA2 (,) token token
+    _ <- arityGuard (pure 2) Nothing "set"
+    (k, v) <- liftA2 (,) token token
     opts <- pSetOptions
-    eof
     pure $ Set (SetPayload k v opts)
-  where
-    withE = withError (WrongNumberOfArguments "set")
 
 pRPush :: Parser Command
 pRPush = do
-    k <- withE token
+    _ <- arityGuard (pure 2) Nothing "rpush"
+    k <- token
     vs <- many token
     case vs of
-        [] -> withE empty
+        [] -> empty
         _ -> pure $ RPush (RPushPayload k vs)
-  where
-    withE = withError (WrongNumberOfArguments "rpush")
+
+pLRange :: Parser Command
+pLRange = do
+    _ <- arityGuard (pure 3) (pure 3) "lrange"
+    k <- token
+    start <- pDecimal
+    stop <- pDecimal
+    pure $ LRange $ LRangePayload k start stop
 
 pSetOptions :: Parser [SetOption]
 pSetOptions = do
-    exps <- many . choice $ [("EX" :: Text,) <$> (pName "EX" >> pInt), ("PX",) <$> (pName "PX" >> pInt)]
+    opts <-
+        many . choice $
+            [ ("EX" :: String,) <$> (pName "EX" >> pDecimal)
+            , ("PX",) <$> (pName "PX" >> pDecimal)
+            ]
+    eof
 
-    let exs = map snd $ filter ((== "EX") . fst) exps
-    let pxs = map snd $ filter ((== "PX") . fst) exps
+    let exs = byLabel "EX" opts
+    let pxs = byLabel "PX" opts
 
     case (length exs > 0, length pxs > 0) of
         (True, True) -> empty
@@ -172,8 +209,9 @@ pSetOptions = do
                     if (maximum (idxs valid)) > (maximum (idxs invalid))
                         then pure . pure . constructor . snd . last $ valid
                         else fail InvalidExpireTimeInSetCommand
-    idxs xs = fst <$> xs
+    idxs = fmap fst
     partition pxs = List.partition ((> 0) . snd) (zip [0 :: Int ..] pxs)
+    byLabel label = map snd . filter ((== label) . fst)
 
 pName :: ByteString -> Parser ByteString
 pName name = do
@@ -183,7 +221,7 @@ pName name = do
         else empty
 
 lower :: ByteString -> ByteString
-lower = BC.map Char.toLower
+lower = C8.map Char.toLower
 
 instance Applicative Parser where
     pure x = Parser $ \bs -> (Right (x, bs))
