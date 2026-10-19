@@ -192,6 +192,13 @@ sequences =
             , (["GET", "b"], "$1\r\n2\r\n")
             ]
         )
+    ,
+        ( "LRANGE deals with negative indexes"
+        ,
+            [ (["RPUSH", "mango", "grape", "apple", "pear", "blueberry"], ":4\r\n")
+            , (["LRANGE", "mango", "-3", "-1"], "*3\r\n$5\r\napple\r\n$4\r\npear\r\n$9\r\nblueberry\r\n")
+            ]
+        )
     ]
 
 -- * Arity
