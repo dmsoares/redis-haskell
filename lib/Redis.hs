@@ -12,6 +12,7 @@ import qualified Redis.Data.Store as Store
 import Redis.Store (newRedisStore)
 import qualified Redis.Workflows.Echo as Echo
 import qualified Redis.Workflows.Get as Get
+import qualified Redis.Workflows.LLen as LLen
 import qualified Redis.Workflows.LPush as LPush
 import qualified Redis.Workflows.LRange as LRange
 import qualified Redis.Workflows.Ping as Ping
@@ -35,6 +36,7 @@ dispatch receivedAt store query =
             RPush payload -> runEffectful (RPush.Env receivedAt (Store.get receivedAt store) (Store.set store)) (RPush.workflow payload)
             LPush payload -> runEffectful (LPush.Env receivedAt (Store.get receivedAt store) (Store.set store)) (LPush.workflow payload)
             LRange payload -> runEffectful (LRange.Env (Store.get receivedAt store)) (LRange.workflow payload)
+            LLen payload -> runEffectful (LLen.Env (Store.get receivedAt store)) (LLen.workflow payload)
   where
     runPure :: (ToResp a) => a -> IO Resp
     runPure = pure . toResp

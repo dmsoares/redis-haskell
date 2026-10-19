@@ -331,7 +331,9 @@ All four steps are done; kept here as the record of the order they were done in.
    last, and commit to an option on its *name*. Same parser shape change as
    gap #8's remaining half, so all three move at once.
 3. `PING msg` — the last of gap #11, and the only `PingIgnoresArguments` input.
-4. `LRANGE`, which closes gap #18 for free since the model already stores order.
+4. `LRANGE` in `ModelSpec`, which closes gap #18 for free since the model already
+   stores order. `LLEN` is in the model as of 2026-10-19, but a count cannot see
+   order, so it leaves #18 open.
 
 Pick off the known-gaps entries using Suite 1 as the record of each fix:
 `PING msg`, the `SET` validation order, and `pSetOptions`' swallowed

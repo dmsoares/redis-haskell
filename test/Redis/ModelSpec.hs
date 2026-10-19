@@ -90,6 +90,7 @@ import Test.QuickCheck (
     (===),
  )
 
+import qualified Data.ByteString as BS
 import Redis (newRedisStore)
 import Redis.Reference (Reply (Reply))
 import Redis.Sut (Frame, sutReplyAt)
@@ -107,6 +108,9 @@ data Op
     = Set Key Value (Maybe Ttl)
     | Get Key
     | RPush Key [Value]
+    | LPush Key [Value]
+    | LRange Key Start Stop
+    | LLen Key
     | Advance Millis
     deriving (Eq, Show)
 
@@ -133,9 +137,12 @@ ttlMillis = \case
 
 type Key = ByteString
 type Value = ByteString
+type Start = Int
+type Stop = Int
 
--- | Milliseconds. Named because a bare 'Int' here is read as seconds half the
--- time, and @PX@ takes milliseconds.
+{- | Milliseconds. Named because a bare 'Int' here is read as seconds half the
+time, and @PX@ takes milliseconds.
+-}
 type Millis = Int
 
 {- | The frame a client would send for this operation.
@@ -151,6 +158,9 @@ frameOf = \case
     Set k v (Just (Px ms)) -> Just ["SET", k, v, "PX", C8.pack (show ms)]
     Get k -> Just ["GET", k]
     RPush k vs -> Just (["RPUSH", k] <> vs)
+    LPush k vs -> Just (["LPUSH", k] <> vs)
+    LRange k start stop -> Just ["LRANGE", k, C8.pack (show start), C8.pack (show stop)]
+    LLen k -> Just ["LLEN", k]
     Advance _ -> Nothing
 
 -- * The model
@@ -190,11 +200,13 @@ data Answer
     = Ok
     | Nil
     | Returned ByteString
+    | Values [ByteString]
     | Length Int
     | WrongType
-    | -- | 'Advance' sends nothing, so there is nothing to compare. Both sides
-      -- emit this so that indices stay aligned and a counterexample can be read
-      -- straight down against the operation list.
+    | {- | 'Advance' sends nothing, so there is nothing to compare. Both sides
+      emit this so that indices stay aligned and a counterexample can be read
+      straight down against the operation list.
+      -}
       Moved
     deriving (Eq, Show)
 
@@ -203,10 +215,13 @@ render :: Answer -> Reply
 render = \case
     Ok -> Reply "+OK\r\n"
     Nil -> Reply "$-1\r\n"
-    Returned v -> Reply ("$" <> C8.pack (show (C8.length v)) <> "\r\n" <> v <> "\r\n")
+    Returned v -> Reply $ renderValue v
+    Values vs -> Reply ("*" <> C8.pack (show (length vs)) <> "\r\n" <> BS.concat (map renderValue vs))
     Length n -> Reply (":" <> C8.pack (show n) <> "\r\n")
     WrongType -> Reply "-WRONGTYPE Operation against a key holding the wrong kind of value\r\n"
     Moved -> Reply "<clock moved>"
+  where
+    renderValue v = "$" <> C8.pack (show (C8.length v)) <> "\r\n" <> v <> "\r\n"
 
 {- | An arbitrary fixed instant.
 
@@ -243,6 +258,21 @@ step op m@Model{entries, now} = case op of
         -- Appending preserves the existing expiry: RPUSH is not a fresh write.
         Just e@Entry{stored = AList xs} ->
             let xs' = xs <> vs in (Length (length xs'), put k e{stored = AList xs'})
+        Just Entry{stored = AString _} -> (WrongType, m)
+    LPush k vs -> case live k m of
+        Nothing -> (Length (length vs), put k (Entry (AList (reverse vs)) Nothing))
+        -- Appending preserves the existing expiry: LPUSH is not a fresh write.
+        Just e@Entry{stored = AList xs} ->
+            let xs' = reverse vs <> xs in (Length (length xs'), put k e{stored = AList xs'})
+        Just Entry{stored = AString _} -> (WrongType, m)
+    LRange k _ _ -> case live k m of
+        Nothing -> (Length 0, m)
+        Just Entry{stored = AList xs} -> (Values xs, m)
+        Just Entry{stored = AString _} -> (WrongType, m)
+    -- An absent or expired key is an empty list, so it counts zero, not nil.
+    LLen k -> case live k m of
+        Nothing -> (Length 0, m)
+        Just Entry{stored = AList xs} -> (Length (length xs), m)
         Just Entry{stored = AString _} -> (WrongType, m)
   where
     put k e = m{entries = Map.insert k e entries}
@@ -318,6 +348,7 @@ genOp =
         [ (3, Set <$> genKey <*> genValue <*> genTtl)
         , (3, Get <$> genKey)
         , (2, RPush <$> genKey <*> listOf1 genValue)
+        , (2, LLen <$> genKey)
         , (3, Advance <$> genAdvance)
         ]
 
@@ -382,7 +413,10 @@ shrinkOps = shrinkList shrinkOp
         Set k v (Just (Px _)) -> [Set k v Nothing]
         Set _ _ Nothing -> []
         Get _ -> []
+        LLen _ -> []
         RPush k vs -> [RPush k (init vs) | length vs > 1]
+        LPush k vs -> [LPush k (init vs) | length vs > 1]
+        LRange k l r -> [LRange k l (r - 1) | r > l]
         Advance ms -> [Advance m | m <- [0, ms `div` 2], m < ms]
 
 -- * The suite
@@ -490,10 +524,22 @@ interactionSpec = do
     it "treats an expired string as absent for RPUSH" $
         expectLast [Set "a" "v" (Just (Px 100)), Advance 200, RPush "a" ["x"]] (Length 1)
 
+    it "treats an expired string as absent for LPUSH" $
+        expectLast [Set "a" "v" (Just (Px 100)), Advance 200, LPush "a" ["x"]] (Length 1)
+
     it "does not resurrect an expired key by appending to it" $
         expectLast
             [Set "a" "v" (Just (Px 100)), Advance 200, RPush "a" ["x"], Get "a"]
             WrongType
+
+    it "counts an expired string as an empty list for LLEN" $
+        expectLast [Set "a" "v" (Just (Px 100)), Advance 100, LLen "a"] (Length 0)
+
+    it "still sees a live string as WRONGTYPE for LLEN" $
+        expectLast [Set "a" "v" (Just (Px 100)), Advance 99, LLen "a"] WrongType
+
+    it "counts the list RPUSH built on an expired key" $
+        expectLast [Set "a" "v" (Just (Px 100)), Advance 200, RPush "a" ["x", "y"], LLen "a"] (Length 2)
 
     it "keeps keys independent across expiry" $
         expectLast [Set "a" "v" (Just (Px 100)), Set "b" "w" Nothing, Advance 200, Get "b"] (Returned "w")

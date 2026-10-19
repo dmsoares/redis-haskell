@@ -372,8 +372,8 @@ would have gone green on it.
 
 **What is fixed.** Name resolution and argument matching are now separate: `pCommand`
 resolves the name, then each `p*` validates its own shape through
-`withError (WrongNumberOfArguments name)`. `ECHO`, `GET`, `SET` and `RPUSH` all report the
-right error with the right command name.
+`withError (WrongNumberOfArguments name)`. `ECHO`, `GET`, `SET`, `RPUSH`, `LRANGE` and `LLEN`
+all report the right error with the right command name.
 
 `Redis.ConformanceSpec` drives these from the `arity` field of `COMMAND INFO` rather than
 case by case, which is what the original fix direction asked for — `echo 2`, `get 2`,

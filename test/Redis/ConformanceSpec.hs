@@ -136,6 +136,9 @@ singles =
     , -- If key does not exist, return empty array
       (["LRANGE", "l", "0", "1"], "*0\r\n")
     , (["LRANGE", "l", "x", "x"], notAnInteger)
+    , -- An absent key is an empty list, not a nil.
+      (["LLEN", "l"], ":0\r\n")
+    , (["llen", "l"], ":0\r\n")
     , -- The command name is case-insensitive; the *argument* is not, and must
       -- survive byte for byte.
       (["BOGUS"], "-ERR unknown command 'BOGUS'\r\n")
@@ -196,6 +199,7 @@ sequences =
             [ (["LPUSH", "s", "a"], ":1\r\n")
             , (["LPUSH", "s", "b", "c"], ":3\r\n")
             , (["LPUSH", "s", "d"], ":4\r\n")
+            , (["LRANGE", "s", "0", "4"], "*4\r\n$1\r\nd\r\n$1\r\nc\r\n$1\r\nb\r\n$1\r\na\r\n")
             ]
         )
     ,
@@ -214,6 +218,18 @@ sequences =
             , (["LRANGE", "mango", "-3", "-1"], "*3\r\n$5\r\napple\r\n$4\r\npear\r\n$9\r\nblueberry\r\n")
             ]
         )
+    ,
+        ( "LLEN counts what both ends pushed"
+        ,
+            [ (["RPUSH", "s", "a", "b"], ":2\r\n")
+            , (["LPUSH", "s", "c"], ":3\r\n")
+            , (["LLEN", "s"], ":3\r\n")
+            ]
+        )
+    ,
+        ( "LLEN on a string is WRONGTYPE"
+        , [(["SET", "s", "v"], "+OK\r\n"), (["LLEN", "s"], wrongType)]
+        )
     ]
 
 -- * Arity
@@ -223,7 +239,7 @@ sequences =
 A positive @n@ means exactly @n@ tokens including the command name; a negative
 @n@ means at least @|n|@, variadic beyond that. Captured verbatim:
 
-> ping -1   echo 2   get 2   set -3   rpush -3
+> ping -1   echo 2   get 2   set -3   rpush -3   lrange 4   llen 2
 
 Keeping this as data rather than as a case per command is the point: 'arityRows'
 is one rule, and a sixth command costs one line here instead of a new test.
@@ -235,7 +251,9 @@ arities =
     , ("GET", 2)
     , ("SET", -3)
     , ("RPUSH", -3)
+    , ("LPUSH", -3)
     , ("LRANGE", 4)
+    , ("LLEN", 2)
     ]
 
 {- | Every token count the arity table says must be rejected.

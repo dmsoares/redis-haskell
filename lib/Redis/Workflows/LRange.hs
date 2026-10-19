@@ -63,9 +63,3 @@ execute Input{key = Key k, start = Start start, stop = Stop stop} = do
     computeBound n len
         | n < 0 = len + n
         | otherwise = n
-
--- >>> computeBound' (13) 36
--- 13
---
--- >>> computeBound' (-24) 36
--- 13

@@ -29,6 +29,7 @@ data Command
     | RPush RPushPayload
     | LPush LPushPayload
     | LRange LRangePayload
+    | LLen LLenPayload
     deriving (Show)
 
 newtype EchoPayload = EchoPayload {message :: ByteString}
@@ -70,6 +71,11 @@ data LRangePayload = LRangePayload
     }
     deriving (Show)
 
+newtype LLenPayload = LLenPayload
+    { key :: ByteString
+    }
+    deriving (Show)
+
 -- Serialization
 fromResp :: Resp -> Either RedisError Command
 fromResp resp = flip runParser resp $ pCommand
@@ -103,6 +109,7 @@ pCommand = do
         "rpush" -> pRPush
         "lpush" -> pLPush
         "lrange" -> pLRange
+        "llen" -> pLLen
         _ -> fail $ UnknownCommand t
 
 token :: Parser ByteString
@@ -197,6 +204,12 @@ pLRange = do
     start <- pDecimal
     stop <- pDecimal
     pure $ LRange $ LRangePayload k start stop
+
+pLLen :: Parser Command
+pLLen = do
+    _ <- arityGuard (pure 1) (pure 1) "llen"
+    k <- token
+    pure $ LLen (LLenPayload k)
 
 pSetOptions :: Parser [SetOption]
 pSetOptions = do

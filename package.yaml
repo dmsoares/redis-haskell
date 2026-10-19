@@ -62,6 +62,8 @@ library:
     - Redis.Workflows.LPush
     - Redis.Workflows.LPush.Data
     - Redis.Workflows.LRange
+    - Redis.Workflows.LLen
+    - Redis.Workflows.LLen.Data
     - Resp.Data
     - Resp.Serialization
 

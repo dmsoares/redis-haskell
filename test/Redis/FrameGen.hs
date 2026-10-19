@@ -116,6 +116,7 @@ genWellFormed =
         , (\k vs -> ["RPUSH", k] <> vs) <$> genKey <*> listOf1 genValue
         , (\k vs -> ["LPUSH", k] <> vs) <$> genKey <*> listOf1 genValue
         , (\k start stop -> ["LRANGE", k, start, stop]) <$> genKey <*> genInt <*> genInt
+        , (\k -> ["LLEN", k]) <$> genKey
         ]
 
 {- | A tiny key space, so that collisions between commands in a run are the
