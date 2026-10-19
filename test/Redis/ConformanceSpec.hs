@@ -130,6 +130,9 @@ singles =
     , (["RPUSH", "l", "a"], ":1\r\n")
     , (["RPUSH", "l", "a", "b"], ":2\r\n")
     , (["rpush", "l", "a"], ":1\r\n")
+    , (["LPUSH", "l", "a"], ":1\r\n")
+    , (["LPUSH", "l", "a", "b"], ":2\r\n")
+    , (["lpush", "l", "a"], ":1\r\n")
     , -- If key does not exist, return empty array
       (["LRANGE", "l", "0", "1"], "*0\r\n")
     , (["LRANGE", "l", "x", "x"], notAnInteger)
@@ -181,6 +184,18 @@ sequences =
             [ (["RPUSH", "s", "a"], ":1\r\n")
             , (["RPUSH", "s", "b", "c"], ":3\r\n")
             , (["RPUSH", "s", "d"], ":4\r\n")
+            ]
+        )
+    ,
+        ( "LPUSH onto a string is WRONGTYPE"
+        , [(["SET", "s", "v"], "+OK\r\n"), (["LPUSH", "s", "a"], wrongType)]
+        )
+    ,
+        ( "LPUSH preppends and reports the new length"
+        ,
+            [ (["LPUSH", "s", "a"], ":1\r\n")
+            , (["LPUSH", "s", "b", "c"], ":3\r\n")
+            , (["LPUSH", "s", "d"], ":4\r\n")
             ]
         )
     ,

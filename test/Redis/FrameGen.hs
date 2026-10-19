@@ -114,6 +114,7 @@ genWellFormed =
         , (\k -> ["GET", k]) <$> genKey
         , (\k v o -> ["SET", k, v] <> o) <$> genKey <*> genValue <*> genSetOptions
         , (\k vs -> ["RPUSH", k] <> vs) <$> genKey <*> listOf1 genValue
+        , (\k vs -> ["LPUSH", k] <> vs) <$> genKey <*> listOf1 genValue
         , (\k start stop -> ["LRANGE", k, start, stop]) <$> genKey <*> genInt <*> genInt
         ]
 

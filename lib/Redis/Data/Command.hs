@@ -27,6 +27,7 @@ data Command
     | Set SetPayload
     | Get GetPayload
     | RPush RPushPayload
+    | LPush LPushPayload
     | LRange LRangePayload
     deriving (Show)
 
@@ -51,6 +52,12 @@ newtype GetPayload = GetPayload
     deriving (Show)
 
 data RPushPayload = RPushPayload
+    { key :: ByteString
+    , values :: [ByteString]
+    }
+    deriving (Show)
+
+data LPushPayload = LPushPayload
     { key :: ByteString
     , values :: [ByteString]
     }
@@ -94,6 +101,7 @@ pCommand = do
         "get" -> pGet
         "set" -> pSet
         "rpush" -> pRPush
+        "lpush" -> pLPush
         "lrange" -> pLRange
         _ -> fail $ UnknownCommand t
 
@@ -172,6 +180,15 @@ pRPush = do
     case vs of
         [] -> empty
         _ -> pure $ RPush (RPushPayload k vs)
+
+pLPush :: Parser Command
+pLPush = do
+    _ <- arityGuard (pure 2) Nothing "lpush"
+    k <- token
+    vs <- many token
+    case vs of
+        [] -> empty
+        _ -> pure $ LPush (LPushPayload k vs)
 
 pLRange :: Parser Command
 pLRange = do
