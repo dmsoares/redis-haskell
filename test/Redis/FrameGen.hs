@@ -48,6 +48,7 @@ import Test.QuickCheck (
     frequency,
     listOf1,
     oneof,
+    resize,
     shrinkList,
     sized,
     vectorOf,
@@ -117,6 +118,7 @@ genWellFormed =
         , (\k vs -> ["LPUSH", k] <> vs) <$> genKey <*> listOf1 genValue
         , (\k start stop -> ["LRANGE", k, start, stop]) <$> genKey <*> genInt <*> genInt
         , (\k -> ["LLEN", k]) <$> genKey
+        , (\k c -> ["LPOP", k] <> c) <$> genKey <*> resize 1 (listOf1 genInt)
         ]
 
 {- | A tiny key space, so that collisions between commands in a run are the

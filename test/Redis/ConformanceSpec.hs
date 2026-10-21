@@ -139,6 +139,8 @@ singles =
     , -- An absent key is an empty list, not a nil.
       (["LLEN", "l"], ":0\r\n")
     , (["llen", "l"], ":0\r\n")
+    , -- If key does not exist, return null bulk string
+      (["LPOP", "k"], "$-1\r\n")
     , -- The command name is case-insensitive; the *argument* is not, and must
       -- survive byte for byte.
       (["BOGUS"], "-ERR unknown command 'BOGUS'\r\n")
@@ -190,6 +192,15 @@ sequences =
             ]
         )
     ,
+        ( "RPUSH really appends values"
+        ,
+            [ (["RPUSH", "s", "a"], ":1\r\n")
+            , (["RPUSH", "s", "b", "c"], ":3\r\n")
+            , (["RPUSH", "s", "d"], ":4\r\n")
+            , (["LRANGE", "s", "0", "4"], "*4\r\n$1\r\na\r\n$1\r\nb\r\n$1\r\nc\r\n$1\r\nd\r\n")
+            ]
+        )
+    ,
         ( "LPUSH onto a string is WRONGTYPE"
         , [(["SET", "s", "v"], "+OK\r\n"), (["LPUSH", "s", "a"], wrongType)]
         )
@@ -199,7 +210,42 @@ sequences =
             [ (["LPUSH", "s", "a"], ":1\r\n")
             , (["LPUSH", "s", "b", "c"], ":3\r\n")
             , (["LPUSH", "s", "d"], ":4\r\n")
+            ]
+        )
+    ,
+        ( "LPUSH really preppends and reports the new length"
+        ,
+            [ (["LPUSH", "s", "a"], ":1\r\n")
+            , (["LPUSH", "s", "b", "c"], ":3\r\n")
+            , (["LPUSH", "s", "d"], ":4\r\n")
             , (["LRANGE", "s", "0", "4"], "*4\r\n$1\r\nd\r\n$1\r\nc\r\n$1\r\nb\r\n$1\r\na\r\n")
+            ]
+        )
+    ,
+        ( "LPOP removes and returns first element of list"
+        ,
+            [ (["RPUSH", "s", "a", "b", "c"], ":3\r\n")
+            , (["LPOP", "s"], "$1\r\na\r\n")
+            , (["LLEN", "s"], ":2\r\n")
+            ]
+        )
+    ,
+        ( "LPOP deletes the key when it pops the last item"
+        ,
+            [ (["RPUSH", "s", "a"], ":1\r\n")
+            , (["LPOP", "s"], "$1\r\na\r\n")
+            ]
+        )
+    ,
+        ( "LPOP with no count argument returns null string when key does not exist"
+        ,
+            [ (["LPOP", "s"], "$-1\r\n")
+            ]
+        )
+    ,
+        ( "LPOP with count argument returns null array when key does not exist"
+        ,
+            [ (["LPOP", "s", "2"], "*-1\r\n")
             ]
         )
     ,
@@ -254,6 +300,7 @@ arities =
     , ("LPUSH", -3)
     , ("LRANGE", 4)
     , ("LLEN", 2)
+    , ("LPOP", -2)
     ]
 
 {- | Every token count the arity table says must be rejected.

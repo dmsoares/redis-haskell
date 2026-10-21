@@ -18,7 +18,16 @@ import Prelude hiding (fail)
 
 import Control.Applicative.Combinators (choice)
 import qualified Data.ByteString as BS
-import Redis.Data.Error (RedisError (InvalidExpireTimeInSetCommand, NotAnInteger, SyntaxError, UnknownCommand, WrongNumberOfArguments))
+import Redis.Data.Error (
+    RedisError (
+        InvalidExpireTimeInSetCommand,
+        NotAPositiveInteger,
+        NotAnInteger,
+        SyntaxError,
+        UnknownCommand,
+        WrongNumberOfArguments
+    ),
+ )
 import Resp (Resp (..))
 
 data Command
@@ -30,6 +39,7 @@ data Command
     | LPush LPushPayload
     | LRange LRangePayload
     | LLen LLenPayload
+    | LPop LPopPayload
     deriving (Show)
 
 newtype EchoPayload = EchoPayload {message :: ByteString}
@@ -76,6 +86,12 @@ newtype LLenPayload = LLenPayload
     }
     deriving (Show)
 
+data LPopPayload = LPopPayload
+    { key :: ByteString
+    , count :: Maybe Int
+    }
+    deriving (Show)
+
 -- Serialization
 fromResp :: Resp -> Either RedisError Command
 fromResp resp = flip runParser resp $ pCommand
@@ -110,6 +126,7 @@ pCommand = do
         "lpush" -> pLPush
         "lrange" -> pLRange
         "llen" -> pLLen
+        "lpop" -> pLPop
         _ -> fail $ UnknownCommand t
 
 token :: Parser ByteString
@@ -149,13 +166,28 @@ pDecimal :: Parser Int
 pDecimal = do
     t <- token
     maybe (fail NotAnInteger) (pure . fst) $ do
-        n <- guardLiteral t
+        n <- guard t
         C8.readInt n
   where
-    guardLiteral bs
-        | BS.all (`BS.elem` literals) bs = Just bs
+    guard bs
+        | assertValidChars bs && rejectLeftZeros bs = Just bs
         | otherwise = Nothing
     literals = C8.pack $ '-' : concatMap show [0 :: Int .. 9]
+    assertValidChars = BS.all (`BS.elem` literals)
+    rejectLeftZeros bs = BS.length bs <= 1 || BS.head bs /= 48
+
+pPositiveDecimal :: Parser Int
+pPositiveDecimal = do
+    int <- withError NotAPositiveInteger $ lookahead pDecimal
+    t <- token
+    if guard int t
+        then pure int
+        else fail NotAPositiveInteger
+  where
+    guard int t = isPositive int && rejectNegativeZero t
+    isPositive n = n >= 0
+    rejectNegativeZero "-0" = False
+    rejectNegativeZero _ = True
 
 pPing :: Parser Command
 pPing = pure Ping
@@ -210,6 +242,23 @@ pLLen = do
     _ <- arityGuard (pure 1) (pure 1) "llen"
     k <- token
     pure $ LLen (LLenPayload k)
+
+pLPop :: Parser Command
+pLPop = do
+    _ <- arityGuard (pure 1) (pure 2) "lpop"
+    k <- token
+    c <- lookaheadMaybe token
+    case c of
+        Just _ -> do
+            n <- pPositiveDecimal
+            pure $ LPop (LPopPayload k (Just n))
+        Nothing -> pure $ LPop (LPopPayload k Nothing)
+
+lookaheadMaybe :: Parser a -> Parser (Maybe a)
+lookaheadMaybe p = Parser $ \bs ->
+    case runCmd p bs of
+        Left _ -> pure (Nothing, bs)
+        Right (a, _) -> pure (Just a, bs)
 
 pSetOptions :: Parser [SetOption]
 pSetOptions = do

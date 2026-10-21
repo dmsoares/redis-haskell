@@ -16,4 +16,6 @@ newRedisStore = do
 
     let get' = \key -> atomically $ StmMap.lookup key store
 
-    pure $ mkRedisStore set' get'
+    let delete' = \key -> atomically $ StmMap.delete key store
+
+    pure $ mkRedisStore set' get' delete'

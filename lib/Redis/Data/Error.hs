@@ -12,6 +12,7 @@ data RedisError
     | WrongType
     | WrongNumberOfArguments ByteString
     | NotAnInteger
+    | NotAPositiveInteger
     | SyntaxError
     deriving (Show, Eq)
 
@@ -20,6 +21,7 @@ instance ToResp RedisError where
     toResp InvalidExpireTimeInSetCommand = SimpleError "ERR invalid expire time in 'set' command"
     toResp (MalformedExpiry s) = SimpleError $ "ERR malformed expiry:" <> s
     toResp NotAnInteger = SimpleError $ "ERR value is not an integer or out of range"
+    toResp NotAPositiveInteger = SimpleError $ "ERR value is out of range, must be positive"
     toResp WrongType = SimpleError $ "WRONGTYPE Operation against a key holding the wrong kind of value"
     toResp (WrongNumberOfArguments cmd) = SimpleError $ "ERR wrong number of arguments for '" <> cmd <> "' command"
     toResp SyntaxError = SimpleError $ "ERR syntax error"
